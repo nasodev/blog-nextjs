@@ -1,9 +1,9 @@
 import { Blog } from "contentlayer/generated";
 
 export interface BlogsProp {
-  blogs: Blog[];
+    blogs: Blog[];
 }
 
 export interface BlogProp {
-  blog: Blog;
+    blog: Blog;
 }

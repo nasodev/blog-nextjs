@@ -4,19 +4,19 @@ import { allBlogs, Blog } from "contentlayer/generated";
 import RecentPosts from "@/components/Home/RecentPosts";
 
 export default function Home() {
-  console.log(allBlogs);
-  // const posts = allBlogs.sort((a, b) =>
-  //   compareDesc(new Date(a.date), new Date(b.date))
-  // );
+    console.log(allBlogs);
+    // const posts = allBlogs.sort((a, b) =>
+    //   compareDesc(new Date(a.date), new Date(b.date))
+    // );
 
-  return (
-    // <></>
-    <main className="flex flex-col items-center justify-center">
-      <HomeCoverSection blogs={allBlogs} />
-      <FeaturePosts blogs={allBlogs} />
-      <RecentPosts blogs={allBlogs} />
-    </main>
-  );
+    return (
+        // <></>
+        <main className="flex flex-col items-center justify-center">
+            <HomeCoverSection blogs={allBlogs} />
+            <FeaturePosts blogs={allBlogs} />
+            <RecentPosts blogs={allBlogs} />
+        </main>
+    );
 }
 
 // import Link from "next/link";
