@@ -44,8 +44,5 @@ next-env.d.ts
 # contentlayer
 .contentlayer
 
-# content
-content/
-
 # temp
 temp/

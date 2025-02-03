@@ -1,0 +1,254 @@
+---
+title: "Cursor IDE로 AI와 함께 개발하는 현실적인 방법"
+description: "AI 코파일럿이 코드베이스 전체를 이해하는 새로운 개발 패러다임"
+image: "../../public/blog-cover/cursor.jpg"
+publishedAt: "2025-02-02 21:00:00"
+updatedAt: "2025-02-02 21:00:00"
+author: "fundev"
+isPublished: true
+tags:
+  - cursor
+  - AI
+  - IDE
+---
+
+![AI 기반 개발 워크플로](https://cdn.cursor.sh/assets/cursor-ide-screenshot.png)  
+*Cursor IDE의 AI 통합 개발 환경 (출처: 공식 문서)*
+
+전통적인 IDE의 경계를 넘어, Cursor는 코드베이스 전체를 이해하는 AI 어시스턴트를 개발 워크플로우에 자연스럽게 통합합니다. 이 가이드에서는 실제 프로덕션에서 검증된 14가지 핵심 사용 패턴을 공개합니다.
+
+---
+
+## **1. Cursor IDE 핵심 기능 설정**
+
+### **1.1 프로젝트별 AI 컨텍스트 설정**
+```json showLineNumbers title=".cursor/context.json"
+{
+  "projectKnowledge": {
+    "enable": true,
+    "indexedFiles": ["src/**/*.ts", "lib/*.js"],
+    "ignorePatterns": ["node_modules", ".next"]
+  },
+  "aiModel": {
+    "default": "gpt-4-turbo",
+    "fallback": "claude-3-opus"
+  }
+}
+```
+
+### **1.2 단축키 커스터마이징**
+```json showLineNumbers title=".cursor/keybindings.json"
+{
+  "keybindings": [
+    {
+      "key": "cmd+shift+a",
+      "command": "cursor.chat.focus"
+    },
+    {
+      "key": "cmd+ctrl+g",
+      "command": "cursor.generate.code"
+    }
+  ]
+}
+```
+
+---
+
+## **2. 코드 생성 & 리팩토링**
+
+### **2.1 컨텍스트 인식 코드 생성**
+```typescript showLineNumbers
+// 프롬프트: "현재 사용자 상태 기반으로 권한 검사 함수 생성"
+// AI가 프로젝트의 existingAuth.ts 분석 후 생성
+export const checkPermission = (user: User, requiredRole: UserRole) => {
+  if (user.roles.includes('admin')) return true;
+  return user.roles.some(role => 
+    requiredRole.hierarchy <= role.hierarchy &&
+    role.permissions.includes(requiredRole.permission)
+  );
+};
+```
+
+### **2.2 자동 리팩토링 예시**
+```typescript showLineNumbers {3-5}
+// Before
+function oldMethod(a, b) { return a + b; }
+
+// 프롬프트: "타입스크립트로 변환 및 최적화"
+// After
+const optimizedAdd = (a: number, b: number): number => a + b;
+```
+
+---
+
+## **3. AI 기반 디버깅**
+
+### **3.1 스택 트레이스 분석**
+```bash showLineNumbers
+[ERROR] TypeError: Cannot read property 'name' of undefined
+    at UserProfile (src/components/User.tsx:45:21)
+    at renderWithHooks (node_modules/react-dom/cjs/react-dom-server.node.development.js:5652:16)
+```
+
+```typescript showLineNumbers
+// Cursor AI 분석 결과:
+// 1. 사용자 데이터 fetching 완료 전 렌더링 시도
+// 2. Optional chaining 추가 제안
+const UserProfile = ({ user }) => (
+  <div>{user?.profile?.name ?? '익명'}</div>
+);
+```
+
+### **3.2 성능 병목 지점 진단**
+```typescript showLineNumbers
+// 프롬프트: "이 컴포넌트의 리렌더링 최적화 방안 제시"
+const HeavyComponent = memo(({ items }) => (
+  <ul>
+    {items.map(item => (
+      <ListItem key={item.id} item={item} />
+    ))}
+  </ul>
+), arePropsEqual);
+```
+
+---
+
+## **4. 지능형 코드 탐색**
+
+### **4.1 자연어 기반 코드 검색**
+```
+/search API 호출 후 에러 핸들링이 포함된 모든 파일 찾기
+```
+
+```typescript showLineNumbers title="검색 결과"
+src/api/client.ts:45-68 - handleApiError 구현
+src/utils/errorHandler.ts:12-45 - error logging 시스템
+```
+
+### **4.2 코드베이스 Q&A**
+```
+Q: 결제 모듈에서 환율 계산은 어디서 처리하나요?
+A: src/modules/payment/currencyConverter.ts의 calculateExchangeRate 함수
+```
+
+---
+
+## **5. 실전 사용 패턴**
+
+### **5.1 테스트 케이스 자동 생성**
+```typescript showLineNumbers
+// 프롬프트: "UserService 클래스에 대한 Jest 테스트 생성"
+describe('UserService', () => {
+  let service: UserService;
+
+  beforeEach(() => {
+    service = new UserService(mockRepository);
+  });
+
+  test('getUserById returns valid user', async () => {
+    mockRepository.findOne.mockResolvedValue(testUser);
+    const result = await service.getUserById('1');
+    expect(result).toEqual(expect.objectContaining({
+      id: '1',
+      email: 'test@example.com'
+    }));
+  });
+});
+```
+
+### **5.2 문서화 자동화**
+```markdown showLineNumbers
+// 프롬프트: "이 함수에 대한 JSDoc 및 마크다운 문서 생성"
+/**
+ * 사용자 권한을 체크하는 함수
+ * @param {User} user - 권한을 확인할 사용자 객체
+ * @param {Permission} requiredPermission - 요구되는 권한
+ * @returns {boolean} 권한 보유 여부
+ * @example
+ * checkPermission(currentUser, { level: 3, scope: 'billing' })
+ */
+```
+
+---
+
+## **6. 고급 활용 기법**
+
+### **6.1 커스텀 AI 프롬프트 저장**
+```json showLineNumbers title=".cursor/prompts.json"
+{
+  "generateApiClient": {
+    "instruction": "axios 기반 API 클라이언트 생성. 다음 포함:",
+    "requirements": [
+      "타임아웃 10초",
+      "JWT 자동 주입",
+      "에러 재시도 3회"
+    ]
+  }
+}
+```
+
+### **6.2 데이터베이스 쿼리 최적화**
+```sql showLineNumbers
+-- 프롬프트: "사용자별 주문 수 상위 10명 조회 (최적화된 버전)"
+EXPLAIN ANALYZE
+SELECT user_id, COUNT(*) AS order_count
+FROM orders
+WHERE created_at > NOW() - INTERVAL '1 year'
+GROUP BY user_id
+ORDER BY order_count DESC
+LIMIT 10;
+-- AI 추천 인덱스: CREATE INDEX idx_orders_user_created ON orders(user_id, created_at)
+```
+
+---
+
+## **7. 생산성 극대화 팁**
+
+### **7.1 AI 명령어 치트시트**
+| 단축키         | 기능 설명                     |
+|----------------|------------------------------|
+| Cmd + K Cmd + I | 현재 선택 영역에 대한 즉각적인 수정 제안 |
+| Cmd + Shift + . | 코드 전체 구조 분석           |
+| Cmd + Alt + R   | 실시간 코드 리뷰 모드         |
+
+### **7.2 컨텍스트 관리 전략**
+```mermaid
+graph LR
+  A[프로젝트 설정] --> B[코드베이스 분석]
+  B --> C[자동 인덱싱]
+  C --> D[컨텍스트 캐싱]
+  D --> E[실시간 추론]
+```
+
+---
+
+## **문제 해결 가이드**
+
+### **8.1 일반적인 이슈 대처법**
+```markdown
+1. **AI가 잘못된 코드 제안할 때**
+   - `Cmd+Shift+E`로 잘못된 코드 강조
+   - "/fix 이 부분에서 타입 에러 발생하는 이유 설명해줘"
+
+2. **성능 저하 발생 시**
+   - `.cursor/cache` 폴더 정리
+   - 인덱싱 범위 축소
+```
+
+### **8.2 유용한 확장 프로그램**
+```bash showLineNumbers
+# 프로덕션 필수 확장
+cursor install extension:GitLens
+cursor install extension:ErrorLens
+cursor install extension:CodeMetrics
+```
+
+---
+
+## **마무리**
+Cursor IDE는 단순한 코드 자동 완성을 넘어 개발자의 사고 방식을 확장하는 도구입니다. AI를 코파일럿으로 삼아 더 창의적이고 전략적인 개발에 집중해 보세요.
+
+> **학습 리소스**  
+> - [Cursor 공식 문서](https://docs.cursor.sh/)  
+> - [AI Pair Programming Patterns](https://pairprogramming.ai/patterns)  
+> - [효율적 프롬프트 엔지니어링 가이드](https://learnprompting.org/)
