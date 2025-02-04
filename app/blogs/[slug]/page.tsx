@@ -4,9 +4,65 @@ import Tag from "@/components/Elements/tag";
 import { allBlogs } from "contentlayer/generated";
 import { slug } from "github-slugger";
 import Image from "next/image";
+import siteMetaData from "@/utils/siteMetaData";
 
 export async function generateStaticParams() {
     return allBlogs.map((blog) => ({ slug: blog._raw.flattenedPath }));
+}
+
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+    const blog = allBlogs.find((blog) => blog._raw.flattenedPath === params.slug);
+
+    if (!blog) {
+        return {
+            title: "Blog Not Found",
+            description: "Blog not found",
+        };
+    }
+
+    const publishedTime = new Date(blog.publishedAt).toISOString();
+    const modifiedTime = new Date(blog.updatedAt).toISOString();
+
+    let imageList = [siteMetaData.socialBanner];
+
+    if (blog.image) {
+        imageList =
+            typeof blog.image.filePath === "string"
+                ? [siteMetaData.siteUrl + blog.image.filePath.replace("../public", "")]
+                : [blog.image.filePath]; // ImageFieldData를 string 배열로 변환
+    }
+
+    const ogImage = imageList.map((image) => {
+        return {
+            url: image.includes("http") ? image : siteMetaData.siteUrl + image,
+        };
+    });
+
+    const authors = blog?.author ? [blog.author] : siteMetaData.author;
+
+    return {
+        title: `${blog?.title}`,
+
+        description: blog?.description,
+        openGraph: {
+            title: blog?.title,
+            description: blog?.description,
+            url: siteMetaData.siteUrl + blog.url,
+            siteName: siteMetaData.title,
+            locale: siteMetaData.locale,
+            type: "article",
+            publishedTime: publishedTime,
+            modifiedTime: modifiedTime,
+            images: ogImage,
+            authors: authors.length > 0 ? authors : [siteMetaData.author],
+        },
+        twitter: {
+            card: "summary_large_image",
+            title: blog?.title,
+            description: blog?.description,
+            images: ogImage,
+        },
+    };
 }
 
 export default function BlogPage({ params }: { params: { slug: string } }) {

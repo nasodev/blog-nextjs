@@ -24,6 +24,13 @@ export async function generateStaticParams() {
     return paths;
 }
 
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+    return {
+        title: `${params.slug} Blogs`,
+        description: `${params.slug === "all" ? "AI development" : params.slug} Category`,
+    };
+}
+
 const CategoryPage = ({ params }: { params: { slug: string } }) => {
     const allCategories = ["all"];
 

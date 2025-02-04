@@ -1,6 +1,13 @@
 import AboutCoverSection from "@/components/About/AboutCoverSection";
 import Skills from "@/components/About/Skills";
 import Link from "next/link";
+import siteMetaData from "@/utils/siteMetaData";
+
+export const metadata = {
+    title: "About Me",
+    description: `About me page of ${siteMetaData.title}`,
+};
+
 export default function About() {
     return (
         <div>

@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import React from "react";
 import Logo from "./Logo";
-import { LinkedinIcon, SunIcon, MoonIcon, TwitterIcon, GithubIcon, DribbbleIcon } from "@/components/icons";
+import { LinkedinIcon, SunIcon, MoonIcon, XIcon, GithubIcon, InstagramIcon } from "@/components/icons";
 import useThemeSwitch from "@/components/Hook/useThemeSwitch";
+import siteMetaData from "@/utils/siteMetaData";
 
 const Header = () => {
     const { theme, setTheme, mounted } = useThemeSwitch();
@@ -72,17 +73,17 @@ const Header = () => {
                 </button>
             </nav>
             <div className="sm:flex items-center hidden">
-                <Link href="http://example.com" className="inline-block w-6 h-6 mr-4">
-                    <LinkedinIcon className="hover:scale-125 transition-all ease duration-200" />
-                </Link>
-                <Link href="http://example.com" className="inline-block w-6 h-6 mr-4">
-                    <TwitterIcon className="hover:scale-125 transition-all ease duration-200" />
-                </Link>
-                <Link href="http://example.com" className="inline-block w-6 h-6 mr-4">
+                <Link href={siteMetaData.github} className="inline-block w-6 h-6 mr-4">
                     <GithubIcon className="hover:scale-125 transition-all ease duration-200 dark:fill-light" />
                 </Link>
-                <Link href="http://example.com" className="inline-block w-6 h-6 mr-4">
-                    <DribbbleIcon className="hover:scale-125 transition-all ease duration-200" />
+                <Link href={siteMetaData.x} className="inline-block w-6 h-6 mr-4">
+                    <XIcon className="hover:scale-125 transition-all ease duration-200 dark:fill-light" />
+                </Link>
+                <Link href={siteMetaData.linkedin} className="inline-block w-6 h-6 mr-4">
+                    <LinkedinIcon className="hover:scale-125 transition-all ease duration-200" />
+                </Link>
+                <Link href={siteMetaData.instagram} className="inline-block w-6 h-6 mr-4">
+                    <InstagramIcon className="hover:scale-125 transition-all ease duration-200" />
                 </Link>
             </div>
         </header>
