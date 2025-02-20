@@ -1,4 +1,4 @@
 module.exports = {
-    siteUrl: "http://localhost:3000",
+    siteUrl: "https://blog.funq.kr",
     generateRobotsTxt: true,
 };

@@ -27,8 +27,8 @@ const Footer = () => {
                 Interesting Stories | Updates | Guides
             </h3>
             <p className="mt-5 px-4 text-center w-full sm:w-3/5 font-light dark:font-medium text-sm sm:text-base">
-                Subscribe to learn about new technology and updates. Join over 5000+ members community to stay up to
-                date with latest news.
+                AI와 코딩에 관한 흥미로운 이야기와 실전 팁을 받아보세요. 최신 뉴스부터 기초 가이드까지 함께 학습하고
+                성장해봅시다!
             </p>
             <form
                 onSubmit={handleSubmit(onSubmit)}
@@ -67,9 +67,6 @@ const Footer = () => {
                 <Link href="/sitemap.xml" className="text-center underline my-4 md:my-0">
                     sitemap.xml
                 </Link>
-                <div className="text-center">
-                    Made with &hearts; by <a href="https://devdreaming.com">codebucks</a>
-                </div>
             </div>
         </footer>
     );
