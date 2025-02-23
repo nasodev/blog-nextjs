@@ -10,6 +10,8 @@ const AboutCoverSection = () => {
                     src={profileImg}
                     alt="funq"
                     className="w-4/5 xs:w-3/4 md:w-full h-full object-contain object-center"
+                    priority
+                    sizes="(max-width: 768px) 100vw, (max-width: 1180px) 50vw, 50vw"
                 />
             </div>
             <div className="w-full md:w-1/2 flex flex-col items-start justify-center pb-10 px-5 lg:px-16 text-center lg:text-left">
