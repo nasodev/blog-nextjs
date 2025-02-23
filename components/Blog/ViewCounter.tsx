@@ -1,76 +1,55 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { incrementViewCount, getViewCount } from "@/lib/supabase/api/views";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Missing Supabase environment variables");
-}
-
-const supabase = createClientComponentClient({
-    supabaseUrl,
-    supabaseKey,
-});
-
-const ViewCounter = ({
-    slug,
-    noCount = false,
-    showCount = true,
-}: {
+interface ViewCounterProps {
     slug: string;
     noCount?: boolean;
     showCount?: boolean;
-}) => {
+}
+
+const ViewCounter: React.FC<ViewCounterProps> = ({ slug, noCount = false, showCount = true }) => {
     const [views, setViews] = useState(0);
+    const [error, setError] = useState<string | null>(null);
     const hasIncrementedRef = useRef(false);
 
     useEffect(() => {
-        console.log("Effect running, hasIncremented:", hasIncrementedRef.current);
-
         const incrementView = async () => {
             try {
                 if (!hasIncrementedRef.current) {
-                    console.log("Attempting to increment view");
-                    let { error } = await supabase.rpc("increment", {
-                        slug_text: slug,
-                    });
-                    if (error) console.error(error);
+                    await incrementViewCount(slug);
                     hasIncrementedRef.current = true;
-                    console.log("View incremented, hasIncremented set to:", hasIncrementedRef.current);
                 }
-            } catch (error) {
-                console.error(error);
+            } catch (err) {
+                setError("조회수를 업데이트하는 중 오류가 발생했습니다.");
+                console.error(err);
             }
         };
 
         if (!noCount) {
             incrementView();
         }
-
-        return () => {
-            console.log("Cleanup: Effect is being cleaned up");
-        };
     }, [slug, noCount]);
 
     useEffect(() => {
-        const getViews = async () => {
+        const fetchViewCount = async () => {
             try {
-                let { data: views, error } = await supabase.from("views").select("count").eq("slug", slug);
-                if (error) console.error(error);
-                else setViews(views?.[0]?.count || 0);
-            } catch (error) {
-                console.error(error);
+                const count = await getViewCount(slug);
+                setViews(count);
+            } catch (err) {
+                setError("조회수를 가져오는 중 오류가 발생했습니다.");
+                console.error(err);
             }
         };
 
-        getViews();
+        fetchViewCount();
     }, [slug]);
 
     if (!showCount) return null;
-    return <div>{views}</div>;
+    if (error) return <div className="text-red-500 text-sm">{error}</div>;
+
+    return <div>{views} views</div>;
 };
 
 export default ViewCounter;
