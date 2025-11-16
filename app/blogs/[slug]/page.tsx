@@ -1,6 +1,7 @@
 import BlogDetails from "@/components/Blog/BlogDetails";
 import RenderMdx from "@/components/Blog/RenderMdx";
 import Tag from "@/components/Elements/tag";
+import Comments from "@/components/Comments";
 import { allBlogs } from "contentlayer/generated";
 import { slug } from "github-slugger";
 import Image from "next/image";
@@ -156,6 +157,9 @@ export default function BlogPage({ params }: { params: { slug: string } }) {
                         </details>
                     </div>
                     <RenderMdx blog={blog} />
+                </div>
+                <div className="px-5 md:px-10">
+                    <Comments slug={params.slug} />
                 </div>
             </article>
         </section>
