@@ -69,6 +69,18 @@ export const Blog = defineDocumentType(() => ({
 
 const codeOptions = {
     theme: "github-dark",
+    keepBackground: false,
+    onVisitLine(node) {
+        if (node.children.length === 0) {
+            node.children = [{ type: "text", value: " " }];
+        }
+    },
+    onVisitHighlightedLine(node) {
+        node.properties.className.push("highlighted");
+    },
+    onVisitHighlightedWord(node) {
+        node.properties.className = ["word"];
+    },
 };
 export default makeSource({
     contentDirPath: "content",
@@ -82,6 +94,7 @@ export default makeSource({
             [rehypePrettyCode, codeOptions],
         ],
     },
+    disableImportAliasWarning: true,
 });
 
 // import { defineDocumentType, makeSource } from "contentlayer/source-files";
