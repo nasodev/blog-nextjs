@@ -1,0 +1,791 @@
+---
+title: "블로그 서버 세팅: Ubuntu Server + Supabase + Nginx + HTTPS + Fail2ban"
+description: "집에 있는 남는 PC로 Ubuntu Server를 설치하고, Next.js 블로그를 배포하는 전체 과정을 정리합니다."
+image: "../../public/blog-cover/supabase.jpg"
+publishedAt: "2025-12-14 10:00:00"
+updatedAt: "2025-12-14 10:00:00"
+author: "fundev"
+isPublished: true
+tags:
+  - ubuntu
+  - nginx
+  - supabase
+  - devops
+  - nextjs
+---
+
+AWS의 프리티어를 이용하여 Amplify로 블로그 사이트를 운영하고 있었다.
+계정의 프리티어 기간이 얼마 남지 않아 다른 무료 cloud 서비스를 이용해볼까 생각했지만 블로그 외에도 여러 가지 시도를 해보기 위해
+창고에 있는 오래된 PC에 서버를 세팅해 보기로 하였다.
+
+이 글에서는 실제로 내가 한 순서를 그대로 정리한다.
+
+- Ubuntu Server 설치
+- Next.js 블로그 코드 배포
+- Supabase DB 백업 복원
+- Nginx 리버스 프록시 + 도메인 연결
+- Let's Encrypt로 HTTPS
+- ufw 방화벽 + fail2ban으로 보안 강화
+- GitHub로 코드 정리 + AWS Amplify 정리
+
+---
+
+## **0. 목표 아키텍처**
+
+최종 목표 구조는 대략 이렇게 잡았다.
+
+**집 내부**
+- Ubuntu Server LTS (물리 PC)
+- Next.js 블로그 앱 (npm run start)
+- Nginx: 80/443 → 3000 리버스 프록시
+- ufw + fail2ban
+
+**외부 서비스**
+- Supabase: DB + 인증 (기존 클러스터 백업 복원)
+- 도메인: blog.funq.kr
+
+**클라우드 정리**
+- 기존 AWS Amplify 호스팅은 삭제
+
+---
+
+## **1. Ubuntu Server 설치 및 기본 계정 세팅**
+
+### **1-1. Ubuntu Server LTS 설치**
+
+1. Ubuntu Server LTS ISO 다운로드
+2. 맥에서 부팅 USB 만들기 (balenaEtcher 사용)
+3. 남는 PC에 USB로 부팅 후 설치
+
+설치할 때:
+- 사용자 계정 사용
+- root는 직접 로그인하지 않고, sudo로만 사용
+
+### **1-2. SSH 접속 준비**
+
+서버 IP 확인:
+
+```bash showLineNumbers
+ip addr show
+# 또는
+hostname -I
+# 예: 192.168.0.2
+```
+
+맥에서 접속:
+
+```bash showLineNumbers
+ssh {{user_name}}@192.168.0.2
+```
+
+이후 작업은 대부분 SSH로 진행했다.
+
+---
+
+## **2. 기본 패키지 + Nginx 설치**
+
+```bash showLineNumbers
+sudo apt update
+sudo apt upgrade -y
+
+# 필수 툴
+sudo apt install -y git curl build-essential
+
+# Nginx
+sudo apt install -y nginx
+```
+
+Nginx 상태 확인:
+
+```bash showLineNumbers
+sudo systemctl status nginx
+```
+
+브라우저에서 `http://192.168.0.2` 를 열어 Nginx 기본 페이지가 뜨는지 확인.
+
+---
+
+## **3. Next.js 블로그 소스 가져오기**
+
+GitHub에 이미 있던 블로그 레포:
+- https://github.com/nasodev/blog-nextjs.git
+
+서버에서:
+
+```bash showLineNumbers
+mkdir -p ~/dev
+cd ~/dev
+
+git clone https://github.com/nasodev/blog-nextjs.git
+cd blog-nextjs
+```
+
+처음엔 GitHub username/password를 물어보지만,
+지금은 PAT(토큰)를 써야 한다. 뒤에서 다시 나온다.
+
+---
+
+## **4. Node.js & npm 설치**
+
+Ubuntu 기본 패키지보다는 nvm으로 설치하는 걸 추천한다.
+
+```bash showLineNumbers
+# nvm 설치
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
+
+# 쉘 재로드
+source ~/.bashrc  # 또는 ~/.zshrc
+
+# Node LTS 설치 (예: 20)
+nvm install --lts
+nvm use --lts
+
+node -v
+npm -v
+```
+
+---
+
+## **5. Next.js 14.2.35 + Contentlayer2 마이그레이션**
+
+원래 package.json 은 대략 이런 상태였다:
+
+```json showLineNumbers
+"dependencies": {
+  "next": "13.5.8",
+  "next-contentlayer": "^0.3.4",
+  "contentlayer": "^0.3.4",
+  ...
+}
+```
+
+nextjs에 치명적인 보안 결함이 생겼고 13버전은 보안상 취약점이 있기 때문에 14버전으로 업데이트를 진행하였다.
+
+> **보안 업데이트 참고**: [Next.js Security Update 2025-12-11](https://nextjs.org/blog/security-update-2025-12-11)
+> - Denial of Service: CVE-2025-55184 (High Severity)
+> - Source Code Exposure: CVE-2025-55183 (Medium Severity)
+
+### **5-1. 패키지 버전 변경**
+
+package.json 수정:
+
+```json showLineNumbers {2-4}
+"dependencies": {
+  "next": "14.2.35",
+  "contentlayer2": "^0.5.4",
+  "next-contentlayer2": "^0.5.4",
+  // 기존 next-contentlayer, contentlayer 제거
+}
+```
+
+이후 node_modules 및 lock 파일 삭제:
+
+```bash showLineNumbers
+rm -rf node_modules package-lock.json
+npm install
+```
+
+### **5-2. import 경로 수정**
+
+소스에서 next-contentlayer / contentlayer 사용하던 부분을 찾기:
+
+```bash showLineNumbers
+grep -R "next-contentlayer" -n . --exclude-dir=node_modules --exclude-dir=.git
+grep -R "contentlayer/" -n . --exclude-dir=node_modules --exclude-dir=.git
+```
+
+예를 들면:
+
+```typescript showLineNumbers title="components/Blog/RenderMdx.tsx (변경 전)"
+import { useMDXComponent } from "next-contentlayer/hooks";
+```
+
+contentlayer2 기준에 맞게 변경:
+
+```typescript showLineNumbers title="components/Blog/RenderMdx.tsx (변경 후)"
+import { useMDXComponent } from "next-contentlayer2/hooks";
+```
+
+contentlayer/generated 경로를 쓰는 부분은 그대로 두되,
+tsconfig.json 의 path 설정이 `.contentlayer/generated` 를 가리키도록 유지.
+
+### **5-3. contentlayer.config.ts 정리**
+
+기존 설정에서 MDX 관련 부분에서 타입 문제가 있어서,
+빌드 시 `@ts-expect-error`에 "Unused '@ts-expect-error' directive" 에러가 발생했다.
+
+그 부분을 정리:
+
+```typescript showLineNumbers title="contentlayer.config.ts (변경 전)"
+// @ts-expect-error: Typings are not correct for rehype-pretty-code
+[rehypePrettyCode, codeOptions],
+```
+
+타입 에러를 무시하기보다는, 그냥 주석만 남기거나 타입을 느슨하게 처리하고 `@ts-expect-error`는 제거했다.
+
+```typescript showLineNumbers title="contentlayer.config.ts (변경 후)"
+// rehype-pretty-code 쪽 타입이 완벽하진 않지만 동작에는 문제 없음
+[rehypePrettyCode, codeOptions],
+```
+
+### **5-4. contentlayer 빌드**
+
+```bash showLineNumbers
+rm -rf .contentlayer
+npm run build
+```
+
+한동안 MDX 관련 esbuild 에러(`this.setData is not a function` 등)를 만났지만
+contentlayer2 + 설정 정리 후 해결.
+
+---
+
+## **6. Supabase 프로젝트 마이그레이션 + DB 복원**
+
+### **6-1. 기존 Supabase 클러스터 백업**
+
+기존 Supabase 프로젝트가 장기간 미사용으로 정지되어,
+Supabase에서 클러스터 백업 파일 `.backup.gz` 를 제공해줬다.
+
+예: `db_cluster-11-04-2025@07-17-32.backup.gz`
+
+이 파일을 맥북에 다운로드한 뒤, 서버로 전송:
+
+```bash showLineNumbers title="맥에서 실행"
+cd ~/Downloads
+scp db_cluster-11-04-2025@07-17-32.backup.gz {{user_name}}@192.168.0.2:/home/{{user_name}}/dev/backups/
+```
+
+서버에서 압축 해제:
+
+```bash showLineNumbers
+ssh {{user_name}}@192.168.0.2
+cd ~/dev/backups
+
+gunzip db_cluster-11-04-2025@07-17-32.backup.gz
+ls
+# => db_cluster-11-04-2025@07-17-32.backup
+```
+
+### **6-2. 백업 포맷 확인: pg_restore vs psql**
+
+처음에는 pg_restore 를 썼는데:
+
+```bash showLineNumbers
+pg_restore \
+  --verbose \
+  --clean \
+  --no-owner \
+  --no-privileges \
+  -d "$PGDATABASE" \
+  db_cluster-11-04-2025@07-17-32.backup
+```
+
+이렇게 했더니:
+
+```
+pg_restore: error: input file appears to be a text format dump. Please use psql.
+```
+
+이 백업은 plain SQL 형식이라 pg_restore가 아니라 psql로 실행해야 했다.
+
+### **6-3. 새 Supabase 프로젝트 생성 + 접속 정보**
+
+Supabase 콘솔에서 새 프로젝트를 만들고:
+- Settings → Database → Connect 에서
+- Primary Database 호스트는 IPv6-only인 경우가 있다.
+- 이때는 안내대로 Session Pooler (aws-…supabase.co:6543) 를 사용해야 IPv4 환경에서 접속 가능.
+
+접속 정보 예 (환경변수):
+
+```bash showLineNumbers
+export PGHOST="aws-xxxxx.supabase.co"   # Session Pooler host
+export PGPORT="6543"
+export PGDATABASE="postgres"
+export PGUSER="postgres"
+export PGPASSWORD="실제_DB_비밀번호"    # Database password (reset해서 발급)
+export PGSSLMODE="require"
+```
+
+접속 테스트:
+
+```bash showLineNumbers
+psql -c '\dt'
+```
+
+### **6-4. psql로 백업 복원**
+
+plain SQL 덤프이므로:
+
+```bash showLineNumbers
+cd ~/dev/backups
+
+psql -v ON_ERROR_STOP=1 -f "db_cluster-11-04-2025@07-17-32.backup"
+```
+
+중간에 이런 에러가 한 번 발생했다:
+
+```
+ERROR:  role "anon" already exists
+```
+
+이는 새 Supabase 프로젝트에 이미 anon 역할이 존재해서,
+덤프 안의 `CREATE ROLE anon;`가 실패한 것.
+
+하지만 나머지 테이블/데이터 복원에는 영향을 주지 않으므로,
+ON_ERROR_STOP 없이:
+
+```bash showLineNumbers
+psql -f "db_cluster-11-04-2025@07-17-32.backup"
+```
+
+으로 실행해 나머지 SQL을 흐르게 했다.
+복원 후 Supabase Table Editor에서 데이터가 정상적으로 보이는지 확인.
+
+---
+
+## **7. Next.js에서 Supabase 환경변수 설정**
+
+Supabase 새 프로젝트에서:
+- Settings → API 에서
+- Project URL → `https://<project-ref>.supabase.co`
+- anon public 키 복사
+
+서버에서 `.env.local` 생성:
+
+```bash showLineNumbers
+cd ~/dev/blog-nextjs
+nano .env.local
+```
+
+내용:
+
+```bash showLineNumbers title=".env.local"
+NEXT_PUBLIC_SUPABASE_URL=https://lovvqnqddqivphgsrqanb.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=여기에_anon_public_키
+# 필요 시 서버용 키도 사용 가능
+# SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+> **주의**: `NEXT_PUBLIC_` prefix는 클라이언트 번들에 들어가기 때문에 민감한 키는 넣지 않는다.
+
+빌드:
+
+```bash showLineNumbers
+rm -rf .contentlayer
+npm run build
+```
+
+Supabase 환경변수가 없을 때는 `Error: Missing Supabase environment variables` 에러가 발생했었는데, `.env.local` 설정 후 해결되었다.
+
+---
+
+## **8. Next.js 앱을 외부에서 접속 가능하게 (0.0.0.0 바인딩)**
+
+처음 `npm run start` 를 했을 때:
+
+```
+- Local: http://localhost:3000
+```
+
+만 보이고, LAN에서 `http://192.168.0.2:3000`으로 접속이 안 되었다.
+
+**원인**: Next.js가 기본으로 localhost(127.0.0.1)에만 바인딩.
+
+### **8-1. 테스트 실행**
+
+```bash showLineNumbers
+npm run start -- -H 0.0.0.0
+```
+
+이후 로그에:
+
+```
+- Local:   http://localhost:3000
+- Network: http://0.0.0.0:3000
+```
+
+가 뜨고, 맥에서 `http://192.168.0.2:3000` 접속이 성공.
+
+### **8-2. package.json에 반영**
+
+매번 옵션을 붙이기 귀찮으니 package.json 수정:
+
+```json showLineNumbers {2}
+"scripts": {
+  "start": "next start -H 0.0.0.0"
+}
+```
+
+이제는 그냥 `npm run start` 만 해도 LAN 전체에서 접근 가능.
+
+---
+
+## **9. Nginx 리버스 프록시 설정 (80 → 3000)**
+
+Next.js는 3000 포트에서만 듣고 있고,
+외부에서는 `http://blog.funq.kr` 형태로 접속하게 만들고 싶다.
+
+### **9-1. Nginx 서버블록 생성**
+
+```bash showLineNumbers
+sudo nano /etc/nginx/sites-available/blog-nextjs.conf
+```
+
+내용:
+
+```nginx showLineNumbers title="/etc/nginx/sites-available/blog-nextjs.conf"
+server {
+    listen 80;
+    server_name blog.funq.kr;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+적용:
+
+```bash showLineNumbers
+sudo ln -s /etc/nginx/sites-available/blog-nextjs.conf /etc/nginx/sites-enabled/blog-nextjs.conf
+
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+이제 `http://192.168.0.2` 로 접속하면 Nginx를 통해 Next.js가 뜬다.
+
+---
+
+## **10. ipTIME 포트포워딩 + 도메인 연결**
+
+### **10-1. 공유기에서 포트포워딩**
+
+ipTIME 관리자 페이지 (`http://192.168.0.1`) 에서:
+- 고급 설정 → NAT/라우터 관리 → 포트포워드 설정
+
+규칙 추가:
+- 서비스 이름: blog-http
+- 내부 IP: 192.168.0.2
+- 내부 포트: 80
+- 외부 포트: 80
+- 프로토콜: TCP
+
+HTTPS까지 쓸 계획이라면:
+- 서비스 이름: blog-https
+- 내부 IP: 192.168.0.2
+- 내부 포트: 443
+- 외부 포트: 443
+- 프로토콜: TCP
+
+### **10-2. 도메인 → 외부 IP**
+
+도메인 관리 DNS에서:
+- 타입: A
+- 호스트: blog
+- 값: 집 외부 IP (예: 220.126.174.1)
+
+이제 외부에서도 `http://blog.funq.kr` 로 접속 가능.
+
+---
+
+## **11. Let's Encrypt + certbot 으로 HTTPS 적용**
+
+### **11-1. ufw 방화벽 확인**
+
+```bash showLineNumbers
+sudo ufw status
+```
+
+예시:
+
+```
+Status: active
+
+To            Action  From
+--            ------  ----
+OpenSSH       ALLOW   Anywhere
+Nginx Full    ALLOW   Anywhere
+3000/tcp      ALLOW   Anywhere
+...
+```
+
+`Nginx Full` 이 허용되어 있으면 80/443은 이미 열려 있는 상태.
+
+> 운영 단계에서는 3000은 외부에서 막고 내부에서만 쓰는 게 좋다.
+
+### **11-2. certbot 설치**
+
+```bash showLineNumbers
+sudo snap install core
+sudo snap refresh core
+
+sudo snap install --classic certbot
+sudo ln -s /snap/bin/certbot /usr/bin/certbot
+
+certbot --version
+```
+
+### **11-3. Nginx 플러그인으로 인증서 발급**
+
+```bash showLineNumbers
+sudo certbot --nginx -d blog.funq.kr
+```
+
+- 이메일 입력
+- 약관 동의
+- HTTP → HTTPS 자동 리다이렉트 여부에서 리다이렉트(2) 선택
+
+성공 후 Nginx 설정에는 자동으로:
+- 80 → 443 리다이렉트 서버블록
+- 443 SSL 서버블록
+- `/etc/letsencrypt/live/blog.funq.kr/fullchain.pem` 사용
+
+이 들어간다.
+
+### **11-4. HTTPS 확인**
+
+브라우저에서:
+- `https://blog.funq.kr` 접속
+- 주소창 자물쇠 확인
+- `http://blog.funq.kr` 접속 시 자동으로 `https://` 로 리다이렉트되는지 확인
+
+터미널에서도:
+
+```bash showLineNumbers
+curl -I https://blog.funq.kr
+```
+
+`HTTP/2 200` 응답이면 OK.
+
+---
+
+## **12. ufw 방화벽 규칙 정리**
+
+방화벽은 ufw로 관리했다.
+
+### **12-1. 기본 규칙**
+
+```bash showLineNumbers
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'   # 80, 443
+# (개발 중일 때만) sudo ufw allow 3000/tcp
+
+sudo ufw enable
+sudo ufw status
+```
+
+운영 단계에선 3000을 닫는 걸 권장:
+
+```bash showLineNumbers
+sudo ufw delete allow 3000/tcp
+```
+
+외부는 무조건 80/443만 열어두고,
+Next.js(3000)는 Nginx만 접근하도록 하는 구조가 안정적이다.
+
+---
+
+## **13. Nginx 로그와 인터넷의 "배경 소음"**
+
+서버를 외부에 열어두면 access.log에 이런 로그가 보이기 시작한다:
+
+```
+165.22.34.189 - - [13/Dec/2025:20:39:10 +0900] "GET /server-status HTTP/1.1" 301 178 "-" "Mozilla/5.0 (l9scan/...; +https://leakix.net)"
+138.68.86.32 - - [13/Dec/2025:20:39:11 +0900] "GET /@vite/env HTTP/1.1" 404 12707 "-" "Mozilla/5.0 (l9scan/...; +https://leakix.net)"
+138.68.86.32 - - [13/Dec/2025:20:39:13 +0900] "GET /actuator/env HTTP/1.1" 404 12708 "-" "Mozilla/5.0 (l9scan/...; +https://leakix.net)"
+```
+
+이건 특정 누군가 나를 노리는 해킹이라기보다는,
+LeakIX, l9scan 같은 스캐너가 인터넷 전체를 긁어보는 **배경 소음**에 가깝다.
+
+- `/server-status`, `/actuator/env`, `/@vite/env`, `/login.action` 같은 경로들을 연달아 호출
+- 404/301만 잘 돌려주고, 실제 취약한 서비스가 없으면 피해는 없음
+
+그래도 기분 나쁘니, 다음 단계로 fail2ban을 추가했다.
+
+---
+
+## **14. fail2ban으로 SSH + Nginx 보호**
+
+### **14-1. 설치**
+
+```bash showLineNumbers
+sudo apt update
+sudo apt install -y fail2ban
+
+sudo systemctl status fail2ban
+```
+
+### **14-2. jail 설정 (ssh + nginx 일부)**
+
+사용자 정의 설정 파일:
+
+```bash showLineNumbers
+sudo nano /etc/fail2ban/jail.d/local.conf
+```
+
+최소 sshd만 먼저 켜고:
+
+```ini showLineNumbers title="/etc/fail2ban/jail.d/local.conf"
+[sshd]
+enabled = true
+port    = ssh
+logpath = /var/log/auth.log
+backend = systemd
+```
+
+저장 후:
+
+```bash showLineNumbers
+sudo systemctl restart fail2ban
+sudo fail2ban-client status
+sudo fail2ban-client status sshd
+```
+
+정상이라면:
+- Jail list: sshd
+- Currently banned, Total banned 등의 상태 표시
+
+이후 nginx 쪽도 추가하고 싶다면:
+
+```ini showLineNumbers {6-10} title="/etc/fail2ban/jail.d/local.conf"
+[sshd]
+enabled = true
+port    = ssh
+logpath = /var/log/auth.log
+backend = systemd
+
+[nginx-badbots]
+enabled  = true
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 10
+```
+
+추가 후 다시:
+
+```bash showLineNumbers
+sudo systemctl restart fail2ban
+sudo fail2ban-client status
+sudo fail2ban-client status nginx-badbots
+```
+
+밴된 IP를 해제해야 할 일이 생기면:
+
+```bash showLineNumbers
+sudo fail2ban-client set sshd unbanip 1.2.3.4
+```
+
+---
+
+## **15. Git 설정 + GitHub로 변경 내용 푸시**
+
+로컬에서 여기저기 수정한 것들을 GitHub 레포에 반영.
+
+### **15-1. Git 사용자 정보 설정**
+
+처음 커밋 시도 때 `Author identity unknown` 에러가 나서 global 설정을 했다.
+
+```bash showLineNumbers
+git config --global user.name "Lee hwankyu"
+git config --global user.email "hklee03@cafe24corp.com"
+```
+
+### **15-2. 변경 파일 확인**
+
+```bash showLineNumbers
+cd ~/dev/blog-nextjs
+git status
+```
+
+예:
+
+```
+modified:   components/Blog/RenderMdx.tsx
+modified:   contentlayer.config.ts
+modified:   next.config.js
+modified:   package-lock.json
+modified:   package.json
+```
+
+sitemap-0.xml 같은 빌드 산출물은 원복:
+
+```bash showLineNumbers
+git restore public/sitemap-0.xml
+```
+
+### **15-3. 스테이징 + 커밋**
+
+```bash showLineNumbers
+git add \
+  components/Blog/RenderMdx.tsx \
+  contentlayer.config.ts \
+  next.config.js \
+  package.json \
+  package-lock.json
+
+git commit -m "chore: upgrade Next.js 14.2.35 and migrate to contentlayer2"
+```
+
+### **15-4. GitHub PAT로 push**
+
+GitHub는 계정 비밀번호로 push를 막고 있기 때문에,
+**Personal Access Token (PAT)** 을 발급해서 비밀번호 자리에 넣어야 한다.
+
+- GitHub → Settings → Developer settings → PAT 생성
+- 권한: 해당 레포에 대한 Contents: Read and write
+
+서버에서:
+
+```bash showLineNumbers
+git push origin main
+```
+
+프롬프트:
+- Username: nasodev
+- Password: 발급한 PAT 문자열
+
+성공 후 GitHub에서 커밋 반영 확인.
+
+---
+
+## **16. AWS Amplify 정리**
+
+블로그가 집 서버 + Supabase 조합으로 안정적으로 돌기 시작했으니,
+기존에 쓰던 AWS Amplify Hosting 은 정리했다.
+
+- AWS Console → Amplify → 해당 앱 선택 → Delete app
+- Billing → Bills 화면에서 실제 과금되는 서비스가 더 없는지 확인
+
+---
+
+## **마무리**
+
+결과적으로:
+- 남는 PC 하나 + Ubuntu Server로
+- Next.js 14, Supabase, Nginx, HTTPS, 방화벽, fail2ban 까지 갖춘
+- "실전 느낌 나는" 개인 블로그 서버를 집에 구축했다.
+
+**얻은 점:**
+- Supabase 백업/복원(특히 Session Pooler, IPv4/IPv6 이슈)을 직접 경험
+- Next.js 버전 업 + Contentlayer2 마이그레이션
+- Nginx 리버스 프록시 + 도메인 + HTTPS 풀 스택 서버 운영
+- 인터넷에 서버를 노출했을 때의 실제 로그/스캐닝 패턴을 체감
+- 방화벽, fail2ban, GitHub PAT 같은 실무적 디테일 정리
+
+이제 이 서버는 단순 블로그를 넘어서,
+각종 사이드 프로젝트와 인프라 실험용으로 계속 확장해볼 수 있는 좋은 "연습장"이 됐다.
+
+> **남는 PC 하나, 인터넷 하나, 도메인 하나만 있으면 누구나 자기 집에 "작은 클라우드"를 만들 수 있다.**
+> 그리고 그 과정에서 배우는 것들은 회사 인프라에도 그대로 써먹을 수 있다.
