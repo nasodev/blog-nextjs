@@ -38,6 +38,10 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: 2222
           script: |
+            # 1) nvm 초기화 (npm/pm2 PATH 살리기)
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
             cd /home/funq/dev/blog-nextjs
             git fetch origin main
             git reset --hard origin/main
