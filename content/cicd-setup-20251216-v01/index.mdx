@@ -1,0 +1,430 @@
+---
+title: "서버로 옮긴 Next.js 블로그에 CI/CD 붙이기"
+description: "Next.js 블로그를 Ubuntu 서버로 이전하고, GitHub Actions + SSH + pm2로 CI/CD를 구축한 과정을 정리합니다."
+image: "../../public/blog-cover/supabase.jpg"
+publishedAt: "2025-12-16 10:00:00"
+updatedAt: "2025-12-16 10:00:00"
+author: "fundev"
+isPublished: true
+tags:
+  - cicd
+  - github-actions
+  - devops
+  - nextjs
+  - ubuntu
+---
+
+이 글은 **Next.js 블로그를 Ubuntu 서버로 이전**하고, **GitHub Actions + SSH + pm2**로 CI/CD를 구축한 과정을 정리한 것이다.
+
+---
+
+## 최종 구조
+
+최종적으로는 아래 구조로 동작한다.
+
+```text
+[로컬 개발환경] --- git push ---> [GitHub (blog-nextjs)]
+
+GitHub Actions
+  1. npm ci / lint / build
+  2. SSH 로 집 서버 접속
+  3. git reset --hard origin/main
+  4. npm ci && npm run build
+  5. pm2 reload blog
+
+[집 Ubuntu 서버]
+  - Nginx (HTTPS, blog.funq.kr)
+      └─ Next.js (pm2로 구동 중, 포트 3000)
+  - Supabase (외부 매니지드 DB)
+  - fail2ban / ufw 로 기본 보안
+```
+
+---
+
+## 사전 준비
+
+이 글은 아래 항목들이 준비되어 있다는 전제로 진행한다.
+
+- **도메인**: blog.funq.kr
+- **GitHub 레포**: nasodev/blog-nextjs
+- **서버**
+  - Ubuntu Server 24.04 LTS
+  - 비 root 사용자: funq
+  - 프로젝트 경로: /home/funq/dev/blog-nextjs
+  - Node.js, npm, pm2 설치 (nvm 사용)
+  - pm2 start로 Next.js 서버 실행
+- **Nginx**
+  - https://blog.funq.kr → http://127.0.0.1:3000 리버스 프록시
+  - certbot으로 Let's Encrypt TLS 설정 완료
+- **Supabase**
+  - 프로젝트/DB 복구 완료
+  - .env.local에 아래 값 존재
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+이제 여기에 자동 배포 파이프라인을 얹는 것이 목표다.
+
+---
+
+## 1. 서버에서 GitHub 레포 pull을 위한 SSH 설정
+
+### 1-1. 서버에서 배포용 SSH 키 생성
+
+우분투 서버(funq)에서:
+
+```bash
+ssh funq@192.168.0.2
+
+cd ~/.ssh
+ssh-keygen -t ed25519 -C "blog-nextjs-server"
+# 파일명: id_ed25519 (기본값 사용)
+# passphrase: 비워두고 Enter 두 번
+```
+
+공개키 확인:
+
+```bash
+cat ~/.ssh/id_ed25519.pub
+# ssh-ed25519 AAAA... blog-nextjs-server
+```
+
+### 1-2. GitHub 레포에 Deploy key 등록
+
+GitHub 웹 → nasodev/blog-nextjs 레포:
+
+1. Settings → Deploy keys → Add deploy key
+2. Title: blog-nextjs-server
+3. Key: 방금 복사한 ssh-ed25519 ... 한 줄 전체
+4. Allow write access
+   - 서버에서 push 할 일이 없다면 체크 안 해도 됨 (read-only)
+   - 여기서는 read-only 만으로 충분
+
+### 1-3. 서버에서 git remote를 SSH로 변경
+
+```bash
+cd /home/funq/dev/blog-nextjs
+
+git remote set-url origin git@github.com:nasodev/blog-nextjs.git
+git pull   # 패스워드 없이 잘 되면 성공
+```
+
+이제 서버는 토큰 없이도 GitHub에서 코드만 가져올 수 있는 상태다.
+
+---
+
+## 2. GitHub Actions → 서버 배포를 위한 SSH 키 & 포트포워딩
+
+CI가 서버에 SSH로 접속하려면, GitHub Actions 전용 SSH 키와 공유기 포트포워딩이 필요하다.
+
+### 2-1. 맥북에서 CI용 SSH 키 생성
+
+맥북에서:
+
+```bash
+cd ~/.ssh
+ssh-keygen -t ed25519 -C "github-actions-to-blog-server"
+# 파일명: id_ed25519_blog_ci
+# passphrase: 비워두고 Enter 두 번
+```
+
+생성된 파일:
+
+- `~/.ssh/id_ed25519_blog_ci` ← 비공개키 (GitHub Secret)
+- `~/.ssh/id_ed25519_blog_ci.pub` ← 공개키 (서버 authorized_keys)
+
+### 2-2. 서버에 공개키 등록
+
+```bash
+# 맥에서 공개키 확인
+cat ~/.ssh/id_ed25519_blog_ci.pub
+# 한 줄 전체 복사
+
+# 서버에 접속
+ssh funq@192.168.0.2
+
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+
+nano ~/.ssh/authorized_keys
+# 맨 아래 줄에 붙여넣기
+
+chmod 600 ~/.ssh/authorized_keys
+```
+
+이제 이 키를 가진 누구든 funq 계정으로 서버에 SSH 접속할 수 있다.
+
+### 2-3. 공유기에서 SSH 포트포워딩 설정
+
+ipTIME 예시:
+
+- 메뉴: 고급 설정 → NAT/라우터 관리 → 포트포워드 설정
+- 규칙 추가:
+  - 서비스 이름: ssh-ci
+  - 내부 IP: 192.168.0.2 (Ubuntu 서버)
+  - 내부 포트: 22
+  - 외부 포트: 2001 (보안을 위해 22 대신 다른 포트 사용)
+  - 프로토콜: TCP
+
+→ 외부에서는 blog.funq.kr:2001로 접속하면
+→ 공유기가 192.168.0.2:22로 포워딩 해 준다.
+
+---
+
+## 3. GitHub Secrets 설정
+
+### 3-1. SSH_KEY (비공개키)
+
+맥에서 비공개키 내용 확인:
+
+```bash
+cat ~/.ssh/id_ed25519_blog_ci
+```
+
+GitHub 레포 → Settings → Secrets and variables → Actions → New repository secret
+
+- Name: `SSH_KEY`
+- Value: 위에서 복사한 비공개키 전체 내용
+
+### 3-2. SSH_HOST, SSH_USER, (선택) SSH_PORT
+
+같은 화면에서 Secret을 추가한다.
+
+- `SSH_HOST` = blog.funq.kr
+- `SSH_USER` = funq
+- `SSH_PORT` = 2001 (사용한다면)
+
+### 3-3. Supabase 환경변수
+
+CI 환경에서도 Supabase 빌드가 돌아가야 하므로 Supabase URL/키도 Secrets로 등록한다.
+
+Supabase 대시보드에서 값 확인 후:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+이름 그대로 Secrets에 추가.
+
+---
+
+## 4. GitHub Actions Workflow 작성
+
+이제 레포에 CI/CD 워크플로 파일을 추가한다.
+
+### 4-1. 디렉터리 생성
+
+로컬(맥 or 서버)에서:
+
+```bash
+cd ~/dev/blog-nextjs
+mkdir -p .github/workflows
+```
+
+### 4-2. deploy.yml 작성
+
+`.github/workflows/deploy.yml`:
+
+```yaml title=".github/workflows/deploy.yml"
+name: Deploy blog-nextjs
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    # 빌드에 필요한 환경변수 (Supabase)
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}   # 2222
+          script: |
+            # 1) nvm 초기화 (서버에서 npm/pm2 PATH 잡기)
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            # 2) 코드 최신 상태로 맞추고 빌드
+            cd /home/funq/dev/blog-nextjs
+            git fetch origin main
+            git reset --hard origin/main
+
+            npm ci
+            npm run build
+
+            # 3) pm2: 있으면 reload, 없으면 start
+            if pm2 describe blog >/dev/null 2>&1; then
+              pm2 reload blog --update-env
+            else
+              pm2 start npm --name blog -- run start -- -H 0.0.0.0
+            fi
+
+            pm2 save
+```
+
+> `blog`는 pm2 프로세스 이름이다. 서버에서 `pm2 list` 했을 때 나오는 이름과 반드시 일치해야 한다.
+
+### 4-3. 커밋 & 푸시
+
+```bash
+git add .github/workflows/deploy.yml
+git commit -m "chore: add CI/CD workflow for home server"
+git push origin main
+```
+
+이 순간부터 GitHub Actions 탭에 `Deploy blog-nextjs` 워크플로가 뜨고, push 할 때마다 실행된다.
+
+---
+
+## 5. 배포 플로우 상세
+
+`git push origin main`을 하면 실제로는 이렇게 흘러간다.
+
+1. **GitHub Actions**
+   - 코드 체크아웃
+   - Node 20 설치
+   - npm ci
+   - npm run lint
+   - npm run build
+   - 이때 Supabase 환경변수는 Secrets로 주입됨
+
+2. **SSH Deploy Step**
+   - blog.funq.kr:2222로 SSH 접속 (키 인증)
+   - /home/funq/dev/blog-nextjs로 이동
+   - git fetch origin main
+   - git reset --hard origin/main → 서버 코드가 GitHub main과 완전히 동일해짐
+   - npm ci
+   - npm run build
+   - pm2 reload blog --update-env → 다운타임 없이 새 코드로 교체
+
+3. **Nginx**
+   - 계속 포트 3000의 pm2 프로세스에 트래픽을 전달
+   - 사용자는 중간에 끊김 없이 새 버전을 보게 된다.
+
+---
+
+## 6. 삽질 로그 & 트러블슈팅
+
+실제 세팅하면서 만난 문제들.
+
+### 6-1. Supabase 환경변수 누락
+
+CI 첫 빌드에서:
+
+```text
+Error: Missing Supabase environment variables
+```
+
+**원인:**
+
+- 로컬/서버에는 .env.local이 있지만, GitHub Actions 러너에는 없어서 process.env가 비어 있음.
+- 코드에서 환경변수가 없으면 바로 예외를 던지도록 되어 있었음.
+
+**해결:**
+
+- Supabase URL/Anon Key를 GitHub Secrets에 저장
+- jobs.build-and-deploy.env 블럭에서 주입
+
+### 6-2. npm: command not found
+
+SSH 단계에서:
+
+```text
+bash: line 4: npm: command not found
+bash: line 5: pm2: command not found
+```
+
+**원인:**
+
+- 서버에서 Node를 nvm으로 설치해 두었는데, GitHub Actions가 여는 비대화형 쉘에서는 ~/.bashrc / nvm 초기화가 실행되지 않음.
+
+**해결:**
+
+```bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+```
+
+를 SSH script 상단에 추가해 nvm 환경을 수동으로 로드.
+
+### 6-3. Process or Namespace blog-nextjs not found
+
+pm2 reload 단계에서:
+
+```text
+[ERROR] Process or Namespace blog-nextjs not found
+```
+
+**원인:**
+
+- 실제 pm2 프로세스 이름은 `blog`인데 워크플로에서는 `pm2 reload blog-nextjs`를 호출하고 있었음.
+
+**해결:**
+
+- pm2 이름을 `blog`로 맞추고, 워크플로도 `pm2 describe blog` / `pm2 reload blog`로 수정
+
+---
+
+## 7. 보안 측면에서 해둔 것들
+
+집 서버를 인터넷에 여는 만큼, 최소한의 방어는 챙겼다.
+
+1. **SSH**
+   - PasswordAuthentication no
+   - PermitRootLogin no
+   - 키 인증만 허용
+   - 외부 포트는 22 대신 2001 사용 (포트포워딩)
+
+2. **ufw**
+
+```bash
+sudo ufw allow OpenSSH
+sudo ufw allow "Nginx Full"
+sudo ufw enable
+```
+
+3. **fail2ban**
+   - nginx, sshd에 대한 기본 jail 활성화
+   - 로그인/스캔 시도 과도한 IP 차단
+
+---
+
+## 마무리
+
+이제 흐름은 아주 단순해졌다.
+
+```text
+로컬에서 코드 수정
+→ git commit
+→ git push origin main
+→ 잠시 후 https://blog.funq.kr 에 새 버전 자동 반영
+```
