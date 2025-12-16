@@ -47,4 +47,9 @@ jobs:
             git reset --hard origin/main
             npm ci
             npm run build
-            pm2 reload blog-nextjs
+            # pm2 프로세스가 있으면 reload, 없으면 start
+            if pm2 describe blog >/dev/null 2>&1; then
+              pm2 reload blog --update-env
+            else
+              pm2 start npm --name blog -- run start -- -H 0.0.0.0
+            fi
