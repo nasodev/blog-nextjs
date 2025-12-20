@@ -1,0 +1,201 @@
+---
+title: FastAPI 백엔드 API 프로젝트 셋업
+date: 2024-12-19
+description: Python 3.12 + FastAPI + PostgreSQL 기반 백엔드 API 프로젝트 초기 구성
+tags: ["FastAPI", "Python", "PostgreSQL", "Backend"]
+---
+
+## 프로젝트 개요
+
+블로그와 연동할 백엔드 API 서버를 구축했습니다. `api.funq.kr` 도메인으로 서비스할 예정입니다.
+
+## 기술 스택
+
+| 분류 | 기술 | 버전 |
+|------|------|------|
+| 런타임 | Python | 3.12 |
+| 프레임워크 | FastAPI | 0.115.6 |
+| 서버 | Uvicorn | 0.34.0 |
+| ORM | SQLAlchemy | 2.0.36 |
+| DB | PostgreSQL | - |
+| 마이그레이션 | Alembic | 1.14.0 |
+| 설정 관리 | pydantic-settings | 2.7.0 |
+| 테스트 | pytest + httpx | - |
+
+## 프로젝트 구조
+
+```
+backend-api/
+├── app/
+│   ├── main.py          # FastAPI 앱 진입점
+│   ├── config.py        # pydantic-settings 기반 설정
+│   ├── database.py      # SQLAlchemy 엔진 및 세션
+│   ├── models/          # SQLAlchemy 모델
+│   ├── schemas/         # Pydantic 스키마
+│   └── routers/         # API 라우터 모듈
+├── alembic/             # DB 마이그레이션
+├── tests/               # pytest 테스트
+├── deploy/              # systemd 서비스 파일
+└── .github/workflows/   # CI/CD
+```
+
+## 주요 구현 내용
+
+### 1. 환경 변수 관리 (pydantic-settings)
+
+`app/config.py`에서 `pydantic-settings`를 사용해 환경 변수를 타입 안전하게 관리합니다.
+
+```python
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from functools import lru_cache
+
+class Settings(BaseSettings):
+    app_name: str = "Backend API"
+    debug: bool = False
+    database_url: str = "postgresql://..."
+    cors_origins: list[str] = ["http://localhost:3000"]
+
+    model_config = SettingsConfigDict(env_file=".env")
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+```
+
+`@lru_cache` 데코레이터로 설정을 캐싱하여 매번 `.env` 파일을 읽지 않도록 했습니다.
+
+### 2. 데이터베이스 연결 (SQLAlchemy 2.0)
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+
+engine = create_engine(settings.database_url)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+class Base(DeclarativeBase):
+    pass
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+```
+
+SQLAlchemy 2.0 스타일의 `DeclarativeBase`를 사용했습니다.
+
+### 3. Health Check 엔드포인트
+
+API 서버와 DB 연결 상태를 확인하는 엔드포인트를 구현했습니다.
+
+```python
+@router.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+@router.get("/health/db")
+def db_health_check(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        return {"status": "error", "database": str(e)}
+```
+
+### 4. CORS 설정
+
+블로그 프론트엔드(`blog.funq.kr`)에서 API를 호출할 수 있도록 CORS를 설정했습니다.
+
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+## 배포 구성
+
+### systemd 서비스
+
+```ini
+[Unit]
+Description=Backend API (FastAPI)
+After=network.target postgresql.service
+
+[Service]
+User=funq
+WorkingDirectory=/home/funq/dev/backend-api
+Environment="PATH=/home/funq/dev/backend-api/venv/bin"
+ExecStart=/home/funq/dev/backend-api/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### GitHub Actions CI/CD
+
+`main` 브랜치에 푸시하면 자동으로 테스트 실행 후 서버에 배포됩니다.
+
+```yaml
+name: Deploy backend-api
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pytest tests/ -v
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          script: |
+            cd /home/funq/dev/backend-api
+            git fetch origin main && git reset --hard origin/main
+            source venv/bin/activate
+            pip install -r requirements.txt
+            sudo systemctl restart backend-api
+```
+
+### 배포 트러블슈팅: sudo 권한 문제
+
+첫 배포 시 `sudo systemctl restart backend-api` 실행 단계에서 비밀번호를 요청하며 실패했습니다.
+
+**원인:** SSH로 접속한 사용자가 sudo 명령 실행 시 비밀번호 입력이 필요함
+
+**해결:** 특정 systemctl 명령에 대해 passwordless sudo 권한 설정
+
+```bash
+# 서버에서 sudoers 파일 생성
+sudo visudo -f /etc/sudoers.d/funq-backend-api
+```
+
+다음 내용 추가:
+
+```
+funq ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart backend-api
+funq ALL=(ALL) NOPASSWD: /usr/bin/systemctl status backend-api
+funq ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop backend-api
+funq ALL=(ALL) NOPASSWD: /usr/bin/systemctl start backend-api
+```
+
+이렇게 하면 `backend-api` 서비스 관련 명령만 비밀번호 없이 실행할 수 있어 보안을 유지하면서 CI/CD 자동화가 가능합니다.
+
+## 다음 단계
+
+- [ ] 블로그 댓글 기능 API 구현
+- [ ] 사용자 인증 (JWT)
+- [ ] API 문서화 보완
