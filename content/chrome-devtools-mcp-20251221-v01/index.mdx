@@ -1,0 +1,217 @@
+---
+title: "자연어로 E2E 테스트하기: Chrome DevTools MCP 활용기"
+description: "Playwright 이후, Chrome DevTools MCP를 써보며 느낀 점과 Markdown 시나리오 템플릿 공유"
+image: "../../public/blog-cover/chrome-devtools-mcp-20251221-v01.jpg"
+publishedAt: "2025-12-21 22:00:00"
+updatedAt: "2025-12-21 22:00:00"
+author: "fundev"
+isPublished: true
+tags:
+  - chrome-devtools
+  - mcp
+  - e2e-testing
+  - playwright
+  - claude-code
+---
+
+## 자연어로 E2E 테스트하기: Playwright 이후, Chrome DevTools MCP를 써보며 느낀 점
+
+처음 Playwright로 E2E 테스트를 붙였을 때 가장 큰 허들은 “테스트 스크립트를 만드는 시간”이었습니다.
+테스트 자체보다 스크립트 작성/유지보수 비용이 커서, 프로젝트 상황에 따라 E2E를 넓히기 쉽지 않았어요.
+
+그런데 요즘은 상황이 좀 달라졌습니다.
+	•	Playwright 스크립트는 AI 도움을 받아 초안 생성이 가능해지면서, “처음 시작 비용”이 확 줄었습니다. (물론 유지보수는 여전히 숙제)
+	•	그리고 더 흥미로웠던 건, Chrome DevTools MCP처럼 “스크립트 없이(혹은 최소화하고) 자연어로 브라우저를 조작”하는 방식이 등장했다는 점입니다.  ￼
+
+자연어 기반은 스크립트 기반처럼 완벽한 재현성을 보장하긴 어렵습니다.
+하지만 시나리오를 Markdown(md)로 템플릿화해서 “자연어의 자유도”를 관리하면, 오히려 유연하게 대처 가능한 E2E라는 장점이 생긴다고 느꼈습니다.
+
+이 글은 제가 그 과정을 정리한 기록입니다.
+
+⸻
+
+MCP와 Chrome DevTools MCP, 정확히 뭐가 다른가?
+
+MCP(Model Context Protocol)란?
+
+MCP(Model Context Protocol)는 LLM(Claude 같은 AI)이 외부 도구/데이터 소스와 표준화된 방식으로 상호작용할 수 있게 해주는 오픈 표준입니다. 쉽게 말해 “AI ↔ 도구 연결 표준 어댑터”에 가깝습니다.  ￼
+
+Claude Code 역시 MCP를 통해 다양한 외부 도구(서버)와 연결할 수 있도록 문서/가이드를 제공합니다.  ￼
+
+Chrome DevTools MCP란?
+
+Chrome DevTools MCP는 AI 코딩 어시스턴트가 실제 Chrome을 제어하고 DevTools 기능(네트워크/콘솔/스크린샷/성능 트레이스 등)을 활용할 수 있도록 해주는 MCP 서버입니다.
+Chrome 팀은 “코딩 에이전트가 브라우저에서 실제로 어떤 일이 벌어지는지 못 본다”는 문제를 짚으면서, DevTools MCP 서버로 이를 보완하는 접근을 소개했습니다.  ￼
+
+또한 공식 README 기준으로 chrome-devtools-mcp는 Puppeteer 기반 자동화(액션 후 자동 대기 포함), 네트워크 분석, 콘솔 확인, 스크린샷/스냅샷, 성능 트레이싱 등을 핵심 기능으로 내세웁니다.  ￼
+
+⸻
+
+설치/설정 (Claude Code 기준)
+
+아래 설정은 “예시 텍스트”가 아니라, ChromeDevTools/chrome-devtools-mcp 공식 README에 있는 형식을 기준으로 정리했습니다.  ￼
+
+요구 사항
+	•	Node.js v20.19 이상(또는 최신 maintenance LTS)
+	•	Chrome Stable 이상
+	•	npm  ￼
+
+MCP 서버 등록 (JSON 설정)
+
+많은 MCP 클라이언트는 아래처럼 mcpServers에 등록합니다.
+
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest"]
+    }
+  }
+}
+
+@latest를 쓰면 항상 최신 버전을 사용하게 됩니다.  ￼
+
+CLI로 추가 (Claude Code)
+
+Claude Code CLI를 쓴다면 아래처럼 추가할 수 있습니다.
+
+claude mcp add chrome-devtools npx chrome-devtools-mcp@latest
+
+￼
+
+⸻
+
+## 스크립트 대신 "시나리오 문서(Markdown)"로 일관성 확보하기
+
+Chrome DevTools MCP는 “Playwright처럼 코드로 테스트를 실행한다”기보다, AI 에이전트가 브라우저를 직접 조작하도록 도구를 제공하는 쪽에 가깝습니다.  ￼
+
+그래서 자연어 기반의 약점(테스트 실행의 흔들림)을 줄이려면:
+	•	“그때그때 프롬프트” 대신
+	•	md 파일로 테스트 시나리오를 템플릿화하고
+	•	Claude Code에게 “이 문서를 그대로 따라 실행”하도록 지시하는 방식이 꽤 효과적이었습니다.
+
+아래는 제가 사용한 md 템플릿 예시입니다.
+
+⸻
+
+Markdown E2E 시나리오 템플릿 예시
+
+포인트: 동사를 제한해서(“Navigate / Fill / Click / Wait / Execute”) AI가 “해석”할 여지를 줄이고, 결과를 체크리스트로 고정합니다.
+
+---
+# Firebase Auth E2E Test
+
+Firebase 인증 → Backend API 연동 테스트
+
+## Preconditions
+
+- kid-chat 서버: `http://localhost:3001` (실행 중)
+- backend-api 서버: `http://localhost:8001` (실행 중)
+- 테스트 계정: e2e-test / e2e-test
+
+## Test Steps
+
+### 1. kid-chat 로그인
+
+1. Navigate to `http://localhost:3001`
+2. Fill 이름 input: `e2e-test`
+3. Fill 비밀번호 input: `e2e-test`
+4. Click "로그인" button
+5. Wait for chat interface to load
+
+### 2. Firebase Token 획득
+
+1. Execute in console: `getToken()`
+2. Get token from console log (msgid with "Token:" prefix)
+3. Save token for API tests
+
+### 3. Backend API 인증 테스트
+
+#### 3.1 /auth/me 엔드포인트
+```bash
+curl -H "Authorization: Bearer <TOKEN>" http://localhost:8001/auth/me
+
+Expected Response:
+
+{
+  "uid": "z6SvYTUhVtQUE3mczn3nJ0tLZNv1",
+  "email": "e2e-test@kidchat.local",
+  "name": null
+}
+
+3.2 /auth/verify 엔드포인트
+
+curl -H "Authorization: Bearer <TOKEN>" http://localhost:8001/auth/verify
+
+Expected Response:
+
+{
+  "valid": true,
+  "uid": "z6SvYTUhVtQUE3mczn3nJ0tLZNv1"
+}
+
+3.3 토큰 없이 요청 (실패 케이스)
+
+curl http://localhost:8001/auth/me
+
+Expected Response:
+
+{"detail": "Not authenticated"}
+
+Expected Results
+	•	kid-chat 로그인 성공
+	•	Firebase ID Token 획득 성공
+	•	/auth/me 정상 응답 (uid, email 포함)
+	•	/auth/verify 정상 응답 (valid: true)
+	•	토큰 없는 요청 시 403 반환
+
+Cleanup
+	1.	브라우저에서 로그아웃 (optional)
+	2.	서버 종료 (optional)
+
+⸻
+
+
+---
+
+## Chrome DevTools MCP로 실제로 “어떻게 조작”되는가?
+
+Chrome DevTools MCP는 기본적으로 다음 흐름으로 동작합니다.
+
+1. 페이지로 이동 (`navigate_page`)
+2. 페이지 스냅샷 획득 (`take_snapshot`)
+3. 스냅샷에 포함된 요소의 `uid`를 이용해 클릭/입력 (`click`, `fill`, `fill_form` 등)
+4. 콘솔/스크린샷/네트워크 확인 (`list_console_messages`, `take_screenshot`, `list_network_requests` 등)
+
+공식 tool reference에 따르면, 예를 들어 `click`은 스냅샷에서 얻은 `uid`를 받아 클릭하고, `fill`은 input/textarea/select에 값을 입력하는 식입니다.
+
+> 즉, **CSS selector 지옥을 피하고** “현재 화면에서 보이는 요소(uid)” 중심으로 조작할 수 있는 게 꽤 매력적이었습니다.
+
+---
+
+## Playwright vs Chrome DevTools MCP: 그래서 무엇을 언제 쓰나?
+
+제가 정리한 감각은 이렇습니다.
+
+### Playwright (스크립트 기반)
+
+- 장점: 재현성/회귀 테스트/CI 자동화에 강함
+- 단점: 초기 스크립트 작성/유지보수 비용이 있음
+- 그래도 Playwright는 **codegen(테스트 제너레이터)** 기능이 있어 브라우저에서 클릭/입력하면서 테스트 코드를 생성할 수 있습니다. (초기 비용을 낮춰줌)
+
+### Chrome DevTools MCP (자연어 + 도구 기반)
+
+- 장점: “실제 브라우저에서 지금 무슨 일이 일어나는지”를 AI가 보면서 디버깅/검증하기 좋음(콘솔/네트워크/성능 트레이스 등 DevTools 영역까지)
+- 단점: 자연어 기반이라 실행이 흔들릴 수 있음 → 그래서 **시나리오 문서 템플릿**이 중요
+
+---
+
+## 결론: “자연어 E2E”의 강점은 유연성, 약점은 일관성 — 그래서 템플릿이 답
+
+정리하면:
+
+- Playwright는 여전히 **CI/반복 테스트의 정답**에 가깝고,
+- Chrome DevTools MCP는 **디버깅/탐색적 테스트/실브라우저 검증**에서 강점이 큽니다.
+- 자연어 기반의 약점은 결국 **md 시나리오 템플릿**으로 통제할 수 있었습니다.
+
+AI 성능이 계속 좋아지는 걸 감안하면, “스크립트를 완전히 고정”하기보다 **문서화된 시나리오를 중심으로 유연하게 대처하는 E2E**가 점점 더 실용적인 옵션이 될 수도 있겠다는 생각이 들었습니다.
