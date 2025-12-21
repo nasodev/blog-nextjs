@@ -18,10 +18,10 @@ export const incrementViewCount = async (slug: string): Promise<void> => {
 
 export const getViewCount = async (slug: string): Promise<number> => {
     try {
-        const { data: views, error } = await supabase.from("views").select("count").eq("slug", slug).single();
+        const { data: views, error } = await supabase.from("views").select("count").eq("slug", slug).maybeSingle();
 
         if (error) throw error;
-        return views?.count || 0;
+        return views?.count ?? 0;
     } catch (error) {
         console.error("Error getting view count:", error);
         throw error;
