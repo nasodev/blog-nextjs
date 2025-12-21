@@ -1,0 +1,359 @@
+---
+title: "FastAPI에서 Firebase Authentication 구현하기"
+description: "Firebase Authentication을 사용하는 프론트엔드와 FastAPI 백엔드를 연동하는 방법"
+image: "../../public/blog-cover/fastapi-firebase-auth-20251221-v01.jpg"
+publishedAt: "2025-12-21 21:00:00"
+updatedAt: "2025-12-21 21:00:00"
+author: "fundev"
+isPublished: true
+tags:
+  - fastapi
+  - firebase
+  - authentication
+  - python
+  - backend
+---
+
+Firebase Authentication을 사용하는 프론트엔드와 FastAPI 백엔드를 연동하는 방법을 다룹니다.
+
+## 개요
+
+많은 웹 애플리케이션에서 Firebase Authentication을 프론트엔드 인증에 사용합니다. 하지만 백엔드 API에서 이 인증을 검증하려면 Firebase Admin SDK를 사용해야 합니다. 이 글에서는 FastAPI에서 Firebase ID Token을 검증하고 보호된 엔드포인트를 구현하는 방법을 설명합니다.
+
+## 아키텍처
+
+```
+┌─────────────┐     Firebase ID Token     ┌─────────────┐
+│  Frontend   │ ─────────────────────────▶│  FastAPI    │
+│  (React)    │                           │  Backend    │
+└─────────────┘                           └─────────────┘
+       │                                         │
+       │ signInWithEmailAndPassword              │ verify_id_token
+       ▼                                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                    Firebase Auth                        │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 인증 흐름
+
+1. 사용자가 프론트엔드에서 Firebase로 로그인
+2. Firebase가 ID Token 발급
+3. 프론트엔드가 API 요청 시 `Authorization: Bearer <token>` 헤더에 토큰 포함
+4. 백엔드에서 Firebase Admin SDK로 토큰 검증
+5. 검증 성공 시 사용자 정보 추출 및 요청 처리
+
+## 구현
+
+### 1. 의존성 설치
+
+```bash
+pip install firebase-admin
+```
+
+`requirements.txt`에 추가:
+```
+firebase-admin==6.4.0
+```
+
+### 2. Firebase 서비스 계정 키 발급
+
+1. [Firebase Console](https://console.firebase.google.com) 접속
+2. 프로젝트 설정 → 서비스 계정 → 새 비공개 키 생성
+3. JSON 파일을 안전한 위치에 저장 (예: `firebase-credentials.json`)
+
+> **주의**: 이 파일은 절대 Git에 커밋하지 마세요. `.gitignore`에 추가하세요.
+
+### 3. 환경 설정
+
+`app/config.py`:
+```python
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env")
+
+    debug: bool = False
+    database_url: str = ""
+    firebase_credentials_path: str = "firebase-credentials.json"
+
+def get_settings() -> Settings:
+    return Settings()
+```
+
+`.env`:
+```
+FIREBASE_CREDENTIALS_PATH=firebase-credentials.json
+```
+
+### 4. Firebase Admin SDK 초기화
+
+`app/firebase.py`:
+```python
+import firebase_admin
+from firebase_admin import credentials, auth
+from pathlib import Path
+
+from app.config import get_settings
+
+_firebase_app = None
+
+def get_firebase_app():
+    """Firebase Admin SDK 앱 인스턴스 반환 (싱글톤)"""
+    global _firebase_app
+
+    if _firebase_app is not None:
+        return _firebase_app
+
+    settings = get_settings()
+    cred_path = Path(settings.firebase_credentials_path)
+
+    if not cred_path.exists():
+        raise FileNotFoundError(
+            f"Firebase credentials file not found: {cred_path}"
+        )
+
+    cred = credentials.Certificate(str(cred_path))
+    _firebase_app = firebase_admin.initialize_app(cred)
+
+    return _firebase_app
+
+def verify_id_token(id_token: str) -> dict:
+    """
+    Firebase ID Token 검증
+
+    Returns:
+        dict: 디코딩된 토큰 정보 (uid, email, name 등)
+
+    Raises:
+        firebase_admin.auth.ExpiredIdTokenError: 토큰 만료
+        firebase_admin.auth.InvalidIdTokenError: 잘못된 토큰
+    """
+    get_firebase_app()  # 앱 초기화 보장
+    decoded_token = auth.verify_id_token(id_token)
+    return decoded_token
+```
+
+**핵심 포인트**:
+- 싱글톤 패턴으로 Firebase 앱 중복 초기화 방지
+- `verify_id_token`은 토큰의 서명, 만료 시간, audience 등을 자동 검증
+
+### 5. FastAPI 의존성 구현
+
+`app/dependencies.py`:
+```python
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from firebase_admin import auth as firebase_auth
+
+from app.firebase import verify_id_token
+
+security = HTTPBearer()
+
+class FirebaseUser:
+    """Firebase 인증 사용자 정보"""
+
+    def __init__(self, uid: str, email: str | None, name: str | None, token_data: dict):
+        self.uid = uid
+        self.email = email
+        self.name = name
+        self.token_data = token_data
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> FirebaseUser:
+    """
+    Firebase ID Token을 검증하고 사용자 정보 반환
+
+    Usage:
+        @router.get("/protected")
+        def protected_route(user: FirebaseUser = Depends(get_current_user)):
+            return {"uid": user.uid}
+    """
+    token = credentials.credentials
+
+    try:
+        decoded_token = verify_id_token(token)
+
+        return FirebaseUser(
+            uid=decoded_token["uid"],
+            email=decoded_token.get("email"),
+            name=decoded_token.get("name"),
+            token_data=decoded_token,
+        )
+
+    except firebase_auth.ExpiredIdTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except firebase_auth.InvalidIdTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Authentication failed: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+```
+
+**중요**: 예외 처리 순서에 주의하세요!
+
+`ExpiredIdTokenError`는 `InvalidIdTokenError`의 서브클래스입니다. 따라서 `ExpiredIdTokenError`를 먼저 처리해야 합니다:
+
+```python
+# 올바른 순서
+except firebase_auth.ExpiredIdTokenError:  # 먼저!
+    ...
+except firebase_auth.InvalidIdTokenError:  # 나중에
+    ...
+
+# 잘못된 순서 - ExpiredIdTokenError가 InvalidIdTokenError로 처리됨
+except firebase_auth.InvalidIdTokenError:
+    ...
+except firebase_auth.ExpiredIdTokenError:  # 절대 도달하지 않음
+    ...
+```
+
+### 6. 인증 라우터 구현
+
+`app/routers/auth.py`:
+```python
+from fastapi import APIRouter, Depends
+
+from app.dependencies import FirebaseUser, get_current_user
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+@router.get("/me")
+def get_me(user: FirebaseUser = Depends(get_current_user)):
+    """현재 로그인한 사용자 정보 반환"""
+    return {
+        "uid": user.uid,
+        "email": user.email,
+        "name": user.name,
+    }
+
+@router.get("/verify")
+def verify_token(user: FirebaseUser = Depends(get_current_user)):
+    """토큰 유효성 검증"""
+    return {
+        "valid": True,
+        "uid": user.uid,
+    }
+```
+
+### 7. 메인 앱에 라우터 등록
+
+`app/main.py`:
+```python
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.config import get_settings
+from app.routers import auth
+
+settings = get_settings()
+
+app = FastAPI(title="Backend API")
+
+# CORS 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 라우터 등록
+app.include_router(auth.router)
+```
+
+## 사용 예시
+
+### API 호출
+
+```bash
+# 성공 케이스
+curl -H "Authorization: Bearer <firebase-id-token>" \
+  http://localhost:8000/auth/me
+
+# 응답
+{"uid": "abc123", "email": "user@example.com", "name": "John"}
+```
+
+```bash
+# 토큰 없이 요청
+curl http://localhost:8000/auth/me
+
+# 응답 (403)
+{"detail": "Not authenticated"}
+```
+
+```bash
+# 잘못된 토큰
+curl -H "Authorization: Bearer invalid_token" \
+  http://localhost:8000/auth/me
+
+# 응답 (401)
+{"detail": "Invalid authentication token"}
+```
+
+### 프론트엔드에서 토큰 획득
+
+```typescript
+import { getAuth } from 'firebase/auth';
+
+async function getIdToken(): Promise<string | null> {
+  const auth = getAuth();
+  const user = auth.currentUser;
+
+  if (!user) return null;
+
+  // forceRefresh: true로 항상 최신 토큰 획득
+  return user.getIdToken(true);
+}
+
+// API 호출
+const token = await getIdToken();
+const response = await fetch('http://localhost:8000/auth/me', {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+
+## 프로젝트 구조
+
+```
+app/
+├── main.py              # FastAPI 앱 진입점
+├── config.py            # 설정 (pydantic-settings)
+├── firebase.py          # Firebase Admin SDK 초기화
+├── dependencies.py      # 인증 의존성 (get_current_user)
+└── routers/
+    └── auth.py          # 인증 엔드포인트
+```
+
+## 보안 고려사항
+
+1. **서비스 계정 키 보호**: `.gitignore`에 추가, 환경 변수로 경로 관리
+2. **HTTPS 사용**: 프로덕션에서는 반드시 HTTPS 사용
+3. **CORS 설정**: 허용된 origin만 명시적으로 설정
+4. **토큰 만료 처리**: 프론트엔드에서 토큰 갱신 로직 구현
+5. **에러 메시지**: 프로덕션에서는 상세한 에러 메시지 노출 주의
+
+## 마무리
+
+Firebase Authentication과 FastAPI를 연동하면 프론트엔드의 인증 상태를 백엔드에서 안전하게 검증할 수 있습니다. 핵심은:
+
+1. Firebase Admin SDK로 ID Token 검증
+2. FastAPI 의존성으로 재사용 가능한 인증 로직 구현
+3. 예외 클래스 상속 관계를 고려한 에러 처리
+
