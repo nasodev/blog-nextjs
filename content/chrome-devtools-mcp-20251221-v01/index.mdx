@@ -60,6 +60,7 @@ MCP 서버 등록 (JSON 설정)
 
 많은 MCP 클라이언트는 아래처럼 mcpServers에 등록합니다.
 
+```json
 {
   "mcpServers": {
     "chrome-devtools": {
@@ -68,16 +69,17 @@ MCP 서버 등록 (JSON 설정)
     }
   }
 }
+```
 
-@latest를 쓰면 항상 최신 버전을 사용하게 됩니다.  ￼
+`@latest`를 쓰면 항상 최신 버전을 사용하게 됩니다.
 
-CLI로 추가 (Claude Code)
+### CLI로 추가 (Claude Code)
 
 Claude Code CLI를 쓴다면 아래처럼 추가할 수 있습니다.
 
+```bash
 claude mcp add chrome-devtools npx chrome-devtools-mcp@latest
-
-￼
+```
 
 ⸻
 
@@ -92,85 +94,80 @@ Chrome DevTools MCP는 “Playwright처럼 코드로 테스트를 실행한다�
 
 아래는 제가 사용한 md 템플릿 예시입니다.
 
-⸻
+### Markdown E2E 시나리오 템플릿 예시
 
-Markdown E2E 시나리오 템플릿 예시
+포인트: 동사를 제한해서("Navigate / Fill / Click / Wait / Execute") AI가 "해석"할 여지를 줄이고, 결과를 체크리스트로 고정합니다.
 
-포인트: 동사를 제한해서(“Navigate / Fill / Click / Wait / Execute”) AI가 “해석”할 여지를 줄이고, 결과를 체크리스트로 고정합니다.
-
----
+```markdown
 # Firebase Auth E2E Test
 
 Firebase 인증 → Backend API 연동 테스트
 
 ## Preconditions
 
-- kid-chat 서버: `http://localhost:3001` (실행 중)
-- backend-api 서버: `http://localhost:8001` (실행 중)
+- kid-chat 서버: http://localhost:3001 (실행 중)
+- backend-api 서버: http://localhost:8001 (실행 중)
 - 테스트 계정: e2e-test / e2e-test
 
 ## Test Steps
 
 ### 1. kid-chat 로그인
 
-1. Navigate to `http://localhost:3001`
-2. Fill 이름 input: `e2e-test`
-3. Fill 비밀번호 input: `e2e-test`
+1. Navigate to http://localhost:3001
+2. Fill 이름 input: e2e-test
+3. Fill 비밀번호 input: e2e-test
 4. Click "로그인" button
 5. Wait for chat interface to load
 
 ### 2. Firebase Token 획득
 
-1. Execute in console: `getToken()`
+1. Execute in console: getToken()
 2. Get token from console log (msgid with "Token:" prefix)
 3. Save token for API tests
 
 ### 3. Backend API 인증 테스트
 
 #### 3.1 /auth/me 엔드포인트
-```bash
+
 curl -H "Authorization: Bearer <TOKEN>" http://localhost:8001/auth/me
 
 Expected Response:
-
 {
   "uid": "z6SvYTUhVtQUE3mczn3nJ0tLZNv1",
   "email": "e2e-test@kidchat.local",
   "name": null
 }
 
-3.2 /auth/verify 엔드포인트
+#### 3.2 /auth/verify 엔드포인트
 
 curl -H "Authorization: Bearer <TOKEN>" http://localhost:8001/auth/verify
 
 Expected Response:
-
 {
   "valid": true,
   "uid": "z6SvYTUhVtQUE3mczn3nJ0tLZNv1"
 }
 
-3.3 토큰 없이 요청 (실패 케이스)
+#### 3.3 토큰 없이 요청 (실패 케이스)
 
 curl http://localhost:8001/auth/me
 
 Expected Response:
-
 {"detail": "Not authenticated"}
 
-Expected Results
-	•	kid-chat 로그인 성공
-	•	Firebase ID Token 획득 성공
-	•	/auth/me 정상 응답 (uid, email 포함)
-	•	/auth/verify 정상 응답 (valid: true)
-	•	토큰 없는 요청 시 403 반환
+## Expected Results
 
-Cleanup
-	1.	브라우저에서 로그아웃 (optional)
-	2.	서버 종료 (optional)
+- kid-chat 로그인 성공
+- Firebase ID Token 획득 성공
+- /auth/me 정상 응답 (uid, email 포함)
+- /auth/verify 정상 응답 (valid: true)
+- 토큰 없는 요청 시 403 반환
 
-⸻
+## Cleanup
 
+1. 브라우저에서 로그아웃 (optional)
+2. 서버 종료 (optional)
+```
 
 ---
 
