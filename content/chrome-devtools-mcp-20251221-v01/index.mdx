@@ -20,8 +20,8 @@ tags:
 테스트 자체보다 스크립트 작성/유지보수 비용이 커서, 프로젝트 상황에 따라 E2E를 넓히기 쉽지 않았어요.
 
 그런데 요즘은 상황이 좀 달라졌습니다.
-	•	Playwright 스크립트는 AI 도움을 받아 초안 생성이 가능해지면서, “처음 시작 비용”이 확 줄었습니다. (물론 유지보수는 여전히 숙제)
-	•	그리고 더 흥미로웠던 건, Chrome DevTools MCP처럼 “스크립트 없이(혹은 최소화하고) 자연어로 브라우저를 조작”하는 방식이 등장했다는 점입니다.  ￼
+	•	Playwright 스크립트는 AI 도움을 받아 초안 생성이 가능해지면서, “초기 비용”이 확 줄었습니다. (물론 유지보수는 여전히 숙제)
+	•	그리고 더 흥미로웠던 건, Chrome DevTools MCP처럼 “스크립트 없이(혹은 최소화하고) 자연어로 브라우저를 조작”하는 방식이 등장했다는 점입니다.
 
 자연어 기반은 스크립트 기반처럼 완벽한 재현성을 보장하긴 어렵습니다.
 하지만 시나리오를 Markdown(md)로 템플릿화해서 “자연어의 자유도”를 관리하면, 오히려 유연하게 대처 가능한 E2E라는 장점이 생긴다고 느꼈습니다.
@@ -30,31 +30,26 @@ tags:
 
 ⸻
 
-MCP와 Chrome DevTools MCP, 정확히 뭐가 다른가?
+MCP와 Chrome DevTools MCP
 
 MCP(Model Context Protocol)란?
 
-MCP(Model Context Protocol)는 LLM(Claude 같은 AI)이 외부 도구/데이터 소스와 표준화된 방식으로 상호작용할 수 있게 해주는 오픈 표준입니다. 쉽게 말해 “AI ↔ 도구 연결 표준 어댑터”에 가깝습니다.  ￼
+MCP(Model Context Protocol)는 LLM(Claude 같은 AI)이 외부 도구/데이터 소스와 표준화된 방식으로 상호작용할 수 있게 해주는 오픈 표준입니다. 쉽게 말해 “AI ↔ 도구 연결 표준 어댑터”에 가깝습니다.
 
-Claude Code 역시 MCP를 통해 다양한 외부 도구(서버)와 연결할 수 있도록 문서/가이드를 제공합니다.  ￼
+Claude Code 역시 MCP를 통해 다양한 외부 도구(서버)와 연결할 수 있도록 문서/가이드를 제공합니다.
 
 Chrome DevTools MCP란?
 
 Chrome DevTools MCP는 AI 코딩 어시스턴트가 실제 Chrome을 제어하고 DevTools 기능(네트워크/콘솔/스크린샷/성능 트레이스 등)을 활용할 수 있도록 해주는 MCP 서버입니다.
-Chrome 팀은 “코딩 에이전트가 브라우저에서 실제로 어떤 일이 벌어지는지 못 본다”는 문제를 짚으면서, DevTools MCP 서버로 이를 보완하는 접근을 소개했습니다.  ￼
+Chrome 팀은 “코딩 에이전트가 브라우저에서 실제로 어떤 일이 벌어지는지 못 본다”는 문제를 짚으면서, DevTools MCP 서버로 이를 보완하는 접근을 소개했습니다.
 
-또한 공식 README 기준으로 chrome-devtools-mcp는 Puppeteer 기반 자동화(액션 후 자동 대기 포함), 네트워크 분석, 콘솔 확인, 스크린샷/스냅샷, 성능 트레이싱 등을 핵심 기능으로 내세웁니다.  ￼
+또한 공식 README 기준으로 chrome-devtools-mcp는 Puppeteer 기반 자동화(액션 후 자동 대기 포함), 네트워크 분석, 콘솔 확인, 스크린샷/스냅샷, 성능 트레이싱 등을 핵심 기능으로 내세웁니다.
 
 ⸻
 
 설치/설정 (Claude Code 기준)
 
-아래 설정은 “예시 텍스트”가 아니라, ChromeDevTools/chrome-devtools-mcp 공식 README에 있는 형식을 기준으로 정리했습니다.  ￼
-
-요구 사항
-	•	Node.js v20.19 이상(또는 최신 maintenance LTS)
-	•	Chrome Stable 이상
-	•	npm  ￼
+아래 설정은 “예시 텍스트”가 아니라, ChromeDevTools/chrome-devtools-mcp 공식 README에 있는 형식을 기준으로 정리했습니다.
 
 MCP 서버 등록 (JSON 설정)
 
@@ -85,7 +80,7 @@ claude mcp add chrome-devtools npx chrome-devtools-mcp@latest
 
 ## 스크립트 대신 "시나리오 문서(Markdown)"로 일관성 확보하기
 
-Chrome DevTools MCP는 “Playwright처럼 코드로 테스트를 실행한다”기보다, AI 에이전트가 브라우저를 직접 조작하도록 도구를 제공하는 쪽에 가깝습니다.  ￼
+Chrome DevTools MCP는 “Playwright처럼 코드로 테스트를 실행한다”기보다, AI 에이전트가 브라우저를 직접 조작하도록 도구를 제공하는 쪽에 가깝습니다.
 
 그래서 자연어 기반의 약점(테스트 실행의 흔들림)을 줄이려면:
 	•	“그때그때 프롬프트” 대신
