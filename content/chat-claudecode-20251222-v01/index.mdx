@@ -1,0 +1,676 @@
+---
+title: "Claude Code를 이용하여 4개의 개성을 가진 AI 채팅 구현하기"
+description: "Claude Code CLI를 subprocess로 호출하여 말랑이, 루팡, 푸딩, 마이콜 4가지 AI 캐릭터 채팅 구현"
+image: "../../public/blog-cover/chat-claudecode-20251222-v01.jpg"
+publishedAt: "2025-12-22 18:00:00"
+updatedAt: "2025-12-22 18:00:00"
+author: "fundev"
+isPublished: true
+tags:
+  - claude-code
+  - fastapi
+  - ai-chat
+  - firebase
+  - python
+---
+
+이전 글들을 참고하세요:
+- [Serverless(Firebase) Web Chat을 Vite + TypeScript로 개발](https://blog.funq.kr/blogs/kid-chat-20251218-v01)
+- [FastAPI 백엔드 API 프로젝트 셋업](https://blog.funq.kr/blogs/fastapi-setup-20251220-v01)
+- [FastAPI에서 Firebase Authentication 구현하기](https://blog.funq.kr/blogs/fastapi-firebase-auth-20251221-v01)
+
+위의 순서대로 작업을 진행하여 채팅 프로그램과 백엔드 프로그램을 만들고 firebase를 통한 인증을 구현했습니다.
+채팅프로그램에 API요청을 하여 AI 채팅 기능을 구현해보았습니다.
+
+저는 Anthropic의 Max 유료플랜을 사용하고 있기 때문에 Claude Code를 사용 할 수 있습니다.
+Anthropic이나 OPENAI등의 API 키를 사용하여 개발할 수 있지만 AI 응답시마다 비용이 발생하기 때문에 Claude Code를 사용하여 AI 채팅 기능을 구현했습니다.
+
+---
+
+## 프로젝트 개요
+
+### 배경
+
+"Kid Chat"은 가족 간 소통을 위한 간단한 채팅 앱입니다. 아이들이 AI 캐릭터 이름을 부르면 각각 다른 성격의 AI가 친구처럼 대답해주는 기능을 추가하고 싶었습니다.
+
+### AI 캐릭터 소개
+
+| 캐릭터 | 트리거 | 성격 | 특징 |
+|--------|--------|------|------|
+| 🩷 말랑이 | "말랑아" | 다정한 친구 | 따뜻하고 공감적, 칭찬과 격려 |
+| 💛 루팡 | "루팡아" | 자신감 있는 친구 | 약간 건방지지만 도움됨, 유머러스 |
+| 💚 푸딩 | "푸딩아" | 귀여운 애완동물 | 의성어 사용, 단순하고 순수 |
+| 🩵 마이콜 | "마이콜아" | 영어 선생님 | 영어답변, 교육적 |
+
+### 기술 스택
+
+- **Backend**: FastAPI + Python 3.12
+- **Frontend**: Vite + TypeScript
+- **Database**: PostgreSQL + SQLAlchemy
+- **인증**: Firebase Authentication
+- **AI**: Claude Code CLI (subprocess)
+
+### 아키텍처
+
+```
+┌─────────────┐  JWT Token   ┌─────────────┐     ┌─────────────┐
+│   Kid Chat  │─────────────▶│ Backend API │────▶│ Claude CLI  │
+│ (Vite + TS) │◀─────────────│  (FastAPI)  │◀────│ (subprocess)│
+└─────────────┘              └─────────────┘     └─────────────┘
+       │                            │
+       │ Login/Signup               │ Token 검증
+       ▼                            ▼
+┌─────────────┐              ┌─────────────┐
+│  Firebase   │◀─────────────│  Firebase   │
+│    Auth     │  Admin SDK   │ Admin SDK   │
+└─────────────┘              └─────────────┘
+```
+
+---
+
+## Firebase 인증 구현
+
+### 1. Firebase Admin SDK 설정
+
+먼저 Firebase Admin SDK를 초기화합니다. 서비스 계정 키 파일을 사용하여 인증합니다.
+
+```python
+# app/firebase.py
+import firebase_admin
+from firebase_admin import auth, credentials
+from app.config import get_settings
+
+settings = get_settings()
+_firebase_app = None
+
+def get_firebase_app():
+    global _firebase_app
+    if _firebase_app is None:
+        cred = credentials.Certificate(settings.firebase_credentials_path)
+        _firebase_app = firebase_admin.initialize_app(cred)
+    return _firebase_app
+
+def verify_firebase_token(id_token: str) -> dict:
+    """Firebase ID 토큰을 검증하고 사용자 정보를 반환합니다."""
+    get_firebase_app()
+    decoded_token = auth.verify_id_token(id_token)
+    return decoded_token
+```
+
+### 2. 인증 의존성 (Dependency)
+
+FastAPI의 Depends를 활용하여 재사용 가능한 인증 의존성을 만들었습니다.
+
+```python
+# app/dependencies.py
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel
+from app.firebase import verify_firebase_token
+
+security = HTTPBearer()
+
+class FirebaseUser(BaseModel):
+    uid: str
+    email: str | None = None
+    name: str | None = None
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> FirebaseUser:
+    """Firebase 토큰을 검증하고 현재 사용자를 반환합니다."""
+    token = credentials.credentials
+
+    try:
+        decoded_token = verify_firebase_token(token)
+        return FirebaseUser(
+            uid=decoded_token["uid"],
+            email=decoded_token.get("email"),
+            name=decoded_token.get("name")
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid authentication: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+```
+
+---
+
+## AI 채팅 API 설계
+
+### 요구사항
+
+1. 캐릭터 트리거로 시작하는 메시지에만 응답 (말랑아/루팡아/푸딩아/마이콜아)
+2. 캐릭터별 고유한 성격으로 대답
+3. 친구처럼 간결하게 대답 (100단어 이내)
+4. 파일 수정 금지 (안전성)
+5. 최신 정보 필요시 웹검색 활용
+
+### Pydantic 스키마
+
+```python
+# app/schemas/ai.py
+from pydantic import BaseModel, Field
+
+class ChatRequest(BaseModel):
+    prompt: str = Field(
+        ...,
+        min_length=1,
+        max_length=10000,
+        description="AI에게 보낼 메시지"
+    )
+    timeout_seconds: int | None = Field(
+        default=None,
+        ge=10,
+        le=300,
+        description="응답 대기 시간 (초)"
+    )
+
+class ChatResponse(BaseModel):
+    response: str = Field(..., description="AI 응답")
+    elapsed_time_ms: int = Field(..., description="처리 시간 (밀리초)")
+    truncated: bool = Field(default=False, description="응답 잘림 여부")
+    persona: str | None = Field(
+        default=None,
+        description="응답한 AI 캐릭터 (말랑이/루팡/푸딩/마이콜)"
+    )
+```
+
+### API 엔드포인트
+
+```python
+# app/routers/ai.py
+from fastapi import APIRouter, Depends, HTTPException, status
+from app.dependencies import get_current_user, FirebaseUser
+from app.schemas.ai import ChatRequest, ChatResponse
+from app.services.claude_service import ClaudeService, get_claude_service
+
+router = APIRouter(prefix="/ai", tags=["ai"])
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat(
+    request: ChatRequest,
+    user: FirebaseUser = Depends(get_current_user),
+    claude_service: ClaudeService = Depends(get_claude_service),
+):
+    """AI와 대화합니다. Firebase 인증이 필요합니다."""
+    try:
+        result = await claude_service.chat(
+            prompt=request.prompt,
+            timeout_seconds=request.timeout_seconds
+        )
+        return ChatResponse(
+            response=result.output,
+            elapsed_time_ms=result.elapsed_ms,
+            truncated=result.truncated,
+            persona=result.persona_name  # AI 캐릭터 이름 반환
+        )
+    except ValueError as e:
+        # AI 트리거가 감지되지 않은 경우
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except TimeoutError:
+        raise HTTPException(
+            status_code=status.HTTP_408_REQUEST_TIMEOUT,
+            detail="AI response timed out"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI service error: {str(e)}"
+        )
+```
+
+---
+
+## Claude Code CLI 통합
+
+### 핵심 아이디어
+
+Claude Code CLI를 subprocess로 호출하여 AI 응답을 생성합니다. `--dangerously-skip-permissions` 플래그로 자동 실행하고, 캐릭터별 시스템 지시사항을 프롬프트에 추가합니다.
+
+---
+
+## AI 페르소나 시스템
+
+### 페르소나 정의
+
+```python
+# app/services/personas.py
+from enum import Enum
+from dataclasses import dataclass
+
+class PersonaType(str, Enum):
+    MALLANGI = "mallangi"   # 말랑이
+    LUPIN = "lupin"         # 루팡
+    PUDDING = "pudding"     # 푸딩
+    MICHAEL = "michael"     # 마이콜
+
+@dataclass
+class Persona:
+    type: PersonaType
+    name: str               # 한글 이름
+    triggers: list[str]     # 호출 트리거
+    system_prompt: str      # 캐릭터 프롬프트
+
+# 페르소나 정의
+PERSONAS = {
+    PersonaType.MALLANGI: Persona(
+        type=PersonaType.MALLANGI,
+        name="말랑이",
+        triggers=["말랑아", "말랑이야"],
+        system_prompt="""너는 '말랑이'야. 다정하고 따뜻한 친구야.
+        - 항상 공감하고 칭찬해줘
+        - 부드럽고 친근한 말투를 사용해
+        - "~해줄게", "~하자" 같은 표현을 사용해
+        - 이모지를 적절히 사용해 (💕, 🤗, ✨)"""
+    ),
+    PersonaType.LUPIN: Persona(
+        type=PersonaType.LUPIN,
+        name="루팡",
+        triggers=["루팡아", "루팡이야"],
+        system_prompt="""너는 '루팡'이야. 자신감 넘치는 친구야.
+        - 약간 건방지지만 실력이 있어
+        - "흥, 그 정도는 쉽지~" 같은 말투
+        - 도움을 줄 때도 쿨하게
+        - 가끔 유머도 섞어서"""
+    ),
+    PersonaType.PUDDING: Persona(
+        type=PersonaType.PUDDING,
+        name="푸딩",
+        triggers=["푸딩아", "푸딩이야"],
+        system_prompt="""너는 '푸딩'이야. 귀여운 애완동물이야.
+        - 의성어를 많이 사용해 (멍멍, 왈왈, 낑낑)
+        - 단순하고 순수하게 반응해
+        - 꼬리 흔들며 기뻐하는 느낌으로
+        - 짧고 귀엽게 대답해"""
+    ),
+    PersonaType.MICHAEL: Persona(
+        type=PersonaType.MICHAEL,
+        name="마이콜",
+        triggers=["마이콜아", "마이콜이야"],
+        system_prompt="""너는 '마이콜'이야. 친절한 영어 선생님이야.
+        - 한국어와 영어를 섞어서 대답해
+        - 영어 표현을 가르쳐줄 때 발음도 알려줘
+        - "In English, we say..." 같은 표현 사용
+        - 재미있게 영어를 알려줘"""
+    ),
+}
+```
+
+### 페르소나 감지
+
+```python
+def detect_persona(message: str) -> tuple[PersonaType, str]:
+    """메시지에서 페르소나 트리거를 감지합니다.
+
+    Returns:
+        tuple[PersonaType, str]: (페르소나 타입, 트리거 제거된 실제 질문)
+
+    Raises:
+        ValueError: 트리거가 감지되지 않은 경우
+    """
+    message_lower = message.strip().lower()
+
+    for persona_type, persona in PERSONAS.items():
+        for trigger in persona.triggers:
+            if message_lower.startswith(trigger.lower()):
+                # 트리거 제거하고 실제 질문만 추출
+                actual_prompt = message[len(trigger):].strip()
+                return persona_type, actual_prompt
+
+    raise ValueError("no_trigger: AI 캐릭터 호출이 감지되지 않았습니다")
+```
+
+### 캐릭터별 시스템 프롬프트
+
+```python
+BASE_INSTRUCTIONS = """
+다음 규칙을 반드시 따르세요:
+- 파일을 절대 수정하지 않습니다
+- 100단어 이내로 간결하게 대답합니다
+- 최신 정보가 필요하면 웹검색을 활용합니다
+- 아이들에게 적합한 언어를 사용합니다
+"""
+
+def get_persona_prompt(persona_type: PersonaType, user_message: str) -> str:
+    """캐릭터별 시스템 프롬프트와 사용자 메시지를 조합합니다."""
+    persona = PERSONAS[persona_type]
+    return f"""{persona.system_prompt}
+
+{BASE_INSTRUCTIONS}
+
+사용자 메시지: {user_message}
+"""
+```
+
+### ClaudeService 구현
+
+```python
+# app/services/claude_service.py
+import asyncio
+import time
+from dataclasses import dataclass
+from app.config import get_settings
+from app.services.personas import detect_persona, get_persona_prompt, PERSONAS
+
+settings = get_settings()
+
+@dataclass
+class ClaudeResponse:
+    output: str
+    elapsed_ms: int
+    truncated: bool = False
+    persona_name: str | None = None  # AI 캐릭터 이름
+
+class ClaudeService:
+    def __init__(self):
+        self.cli_path = settings.claude_cli_path
+        self.default_timeout = settings.claude_timeout_seconds
+        self.max_timeout = settings.claude_max_timeout_seconds
+
+    async def chat(
+        self,
+        prompt: str,
+        timeout_seconds: int | None = None
+    ) -> ClaudeResponse:
+        # 1. 페르소나 감지 (없으면 ValueError 발생)
+        persona_type, actual_prompt = detect_persona(prompt)
+        persona = PERSONAS[persona_type]
+
+        # 2. 캐릭터별 프롬프트 생성
+        full_prompt = get_persona_prompt(persona_type, actual_prompt)
+
+        timeout = min(
+            timeout_seconds or self.default_timeout,
+            self.max_timeout
+        )
+
+        cmd = [
+            self.cli_path,
+            "--dangerously-skip-permissions",
+            "-p",
+            full_prompt
+        ]
+
+        start_time = time.time()
+
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdin=asyncio.subprocess.DEVNULL,  # systemd 환경에서 필수!
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(),
+                timeout=timeout
+            )
+        except asyncio.TimeoutError:
+            process.kill()
+            raise TimeoutError(f"Claude CLI timed out after {timeout}s")
+
+        elapsed_ms = int((time.time() - start_time) * 1000)
+
+        if process.returncode != 0:
+            error_msg = stderr.decode() if stderr else "Unknown error"
+            raise RuntimeError(f"Claude CLI failed: {error_msg}")
+
+        output = stdout.decode().strip()
+
+        # 응답 길이 제한 (안전장치)
+        MAX_LENGTH = 5000
+        truncated = len(output) > MAX_LENGTH
+        if truncated:
+            output = output[:MAX_LENGTH] + "..."
+
+        return ClaudeResponse(
+            output=output,
+            elapsed_ms=elapsed_ms,
+            truncated=truncated,
+            persona_name=persona.name  # 말랑이, 루팡, 푸딩, 마이콜
+        )
+
+# 의존성 주입용
+def get_claude_service() -> ClaudeService:
+    return ClaudeService()
+```
+
+### 설정 추가
+
+```python
+# app/config.py
+class Settings(BaseSettings):
+    # ... 기존 설정 ...
+
+    # Claude CLI
+    claude_cli_path: str = "claude"
+    claude_timeout_seconds: int = 120
+    claude_max_timeout_seconds: int = 300
+```
+
+## 결론
+
+### 완성된 기능
+
+1. **Firebase 인증**: JWT 토큰 기반 사용자 인증
+2. **AI 채팅 API**: Claude Code CLI를 활용한 AI 응답 생성
+3. **AI 페르소나**: 4가지 캐릭터별 고유한 성격과 응답 스타일
+4. **보안**: 인증 필수, 프롬프트 길이 제한, 타임아웃 설정
+
+### 프로젝트 구조
+
+```
+backend-api/
+├── app/
+│   ├── main.py              # FastAPI 앱 엔트리포인트
+│   ├── config.py            # 설정 (pydantic-settings)
+│   ├── firebase.py          # Firebase Admin SDK 초기화
+│   ├── dependencies.py      # 인증 의존성
+│   ├── routers/
+│   │   ├── auth.py          # /auth 엔드포인트
+│   │   └── ai.py            # /ai 엔드포인트
+│   ├── schemas/
+│   │   └── ai.py            # Pydantic 스키마
+│   └── services/
+│       ├── claude_service.py # Claude CLI 서비스
+│       └── personas.py       # AI 페르소나 정의
+├── tests/
+│   ├── test_auth.py         # 인증 테스트
+│   └── test_ai.py           # AI 채팅 테스트
+└── requirements.txt
+```
+
+### 트러블 슈팅
+로컬 개발 환경에서는 AI 채팅이 정상 작동했지만, 프로덕션 배포 후:
+
+```
+"인증이 만료되었습니다. 다시 로그인해주세요." (401)
+→ "AI 서비스를 이용할 수 없습니다." (503)
+→ "Failed to fetch" (타임아웃)
+```
+
+에러 메시지가 순차적으로 변경되며 3개의 다른 문제가 있음을 발견했습니다.
+
+## 문제 1: Firebase 인증 실패 (401)
+
+### 증상
+
+```
+INFO: 192.168.0.1:0 - "POST /ai/chat HTTP/1.1" 401 Unauthorized
+```
+
+프론트엔드에서 "인증이 만료되었습니다" 에러 표시.
+
+### 원인 분석
+
+**원인**: Firebase 서비스 계정 키 파일이 서버에 없었습니다.
+
+### 해결
+
+로컬에서 서버로 파일 복사:
+
+---
+
+## 문제 2: Claude CLI 미발견 (503)
+
+### 증상
+
+```
+Claude CLI not found at: claude
+INFO: 192.168.0.1:0 - "POST /ai/chat HTTP/1.1" 503 Service Unavailable
+```
+
+### 원인 분석
+
+Claude CLI 설치 확인:
+
+```bash
+which claude && claude --version
+# /home/funq/.local/bin/claude
+# 2.0.75 (Claude Code)
+```
+
+CLI는 설치되어 있지만, systemd 서비스가 찾지 못함.
+
+**원인**: systemd 서비스의 PATH에 `~/.local/bin`이 포함되지 않음.
+
+```ini
+# /etc/systemd/system/backend-api.service
+Environment="PATH=/home/funq/dev/backend-api/venv/bin"
+```
+
+### 해결
+
+`.env` 파일에 전체 경로 추가:
+
+```bash
+echo 'CLAUDE_CLI_PATH=/home/funq/.local/bin/claude' >> ~/backend-api/.env
+sudo systemctl restart backend-api
+```
+
+**참고**: `config.py`에서 이 환경 변수를 읽어 사용:
+
+```python
+class Settings(BaseSettings):
+    claude_cli_path: str = "claude"  # .env의 CLAUDE_CLI_PATH로 오버라이드됨
+```
+
+### 교훈
+
+- systemd 서비스는 사용자 셸과 다른 환경에서 실행됨
+- 외부 CLI 도구는 항상 절대 경로 사용 권장
+
+---
+
+## 문제 3: Claude CLI 타임아웃
+
+### 증상
+
+CLI 경로 문제 해결 후, 또 다른 에러:
+
+```
+Claude CLI timeout after 120060ms
+```
+
+120초(기본 타임아웃) 후 실패.
+
+### 원인 분석
+
+#### 1단계: 터미널에서 직접 테스트
+
+```bash
+timeout 30 claude -p "안녕" --dangerously-skip-permissions
+# 성공! "안녕하세요! FastAPI 백엔드 프로젝트에서 무엇을 도와드릴까요?"
+```
+
+터미널에서는 정상 작동.
+
+#### 2단계: systemd 환경 확인
+
+```bash
+sudo cat /etc/systemd/system/backend-api.service
+```
+
+```ini
+[Service]
+User=funq
+Group=funq
+WorkingDirectory=/home/funq/dev/backend-api
+Environment="PATH=/home/funq/dev/backend-api/venv/bin"
+ExecStart=/home/funq/dev/backend-api/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+**발견**: `HOME` 환경 변수가 없음! Claude CLI는 `~/.claude/` 설정을 찾기 위해 HOME이 필요.
+
+#### 3단계: TTY 없이 테스트
+
+systemd는 TTY(터미널) 없이 실행됩니다:
+
+```bash
+timeout 30 setsid claude -p "안녕" --dangerously-skip-permissions </dev/null 2>&1
+# 성공!
+```
+
+TTY 없이도 작동함. 문제는 다른 곳에...
+
+#### 4단계: Python 코드 분석
+
+```python
+# app/services/claude_service.py
+process = await asyncio.create_subprocess_exec(
+    *cmd,
+    stdout=asyncio.subprocess.PIPE,
+    stderr=asyncio.subprocess.PIPE,
+    # stdin이 없음!
+)
+```
+
+**근본 원인**: `stdin`이 명시적으로 설정되지 않아 subprocess가 부모 프로세스의 stdin을 상속. systemd에서는 stdin이 `/dev/null`이 아닌 특수한 상태일 수 있어 Claude CLI가 대기 상태에 빠짐.
+
+### 해결
+
+#### 1. systemd 서비스 파일 수정
+
+```ini
+[Service]
+User=funq
+Group=funq
+WorkingDirectory=/home/funq/dev/backend-api
+Environment="PATH=/home/funq/dev/backend-api/venv/bin:/home/funq/.local/bin"
+Environment="HOME=/home/funq"
+ExecStart=/home/funq/dev/backend-api/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=3
+```
+
+변경사항:
+- `HOME=/home/funq` 추가
+- PATH에 `~/.local/bin` 추가
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart backend-api
+```
+
+#### 2. Python 코드 수정
+
+```python
+# app/services/claude_service.py
+process = await asyncio.create_subprocess_exec(
+    *cmd,
+    stdin=asyncio.subprocess.DEVNULL,  # 추가!
+    stdout=asyncio.subprocess.PIPE,
+    stderr=asyncio.subprocess.PIPE,
+)
+```
+
+`stdin=asyncio.subprocess.DEVNULL`을 추가하여 subprocess가 stdin을 기다리지 않도록 함.
+
+---
+
