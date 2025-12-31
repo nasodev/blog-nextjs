@@ -1,0 +1,570 @@
+---
+title: "개발과 테스트: 풀스택 개발자를 위한 TDD 실무 가이드"
+description: "FastAPI와 Next.js 환경에서 바로 적용할 수 있는 TDD 실무 패턴과 테스트 전략"
+image: "../../public/blog-cover/tdd-20260101-v01.jpg"
+publishedAt: "2026-01-01 10:00:00"
+updatedAt: "2026-01-01 10:00:00"
+author: "fundev"
+isPublished: true
+tags:
+  - tdd
+  - testing
+  - fastapi
+  - nextjs
+  - python
+---
+
+> "테스트 코드를 작성해야 한다는 건 알겠는데, 어디서부터 어떻게 해야 할지 모르겠다."
+
+많은 개발자가 겪는 고민입니다. 테스트는 단순히 "버그를 잡는 행위"가 아닙니다. **변경을 빠르고 안전하게 만드는 비용 효율적인 리스크 관리 장치**입니다.
+
+이 글에서는 개념 정리에 그치지 않고, FastAPI와 Next.js 환경에서 **바로 적용할 수 있는 실무 패턴**을 다룹니다.
+
+---
+
+## 1. 테스트의 3가지 계층
+
+시스템 아키텍처 관점에서 테스트는 세 가지 계층으로 나뉩니다.
+
+| 계층 | 대상 | 특징 |
+|------|------|------|
+| **단위 테스트** | 함수, 클래스 | 빠름, 문제 위치 파악 쉬움 |
+| **통합 테스트** | 모듈 간 연동 | API + DB, 컴포넌트 + API |
+| **E2E 테스트** | 전체 시스템 | 사용자 시나리오 검증, 느림 |
+
+추가로 **정적 분석**(TypeScript, ESLint, mypy)은 코드 실행 없이 문제를 잡아냅니다. 테스트 작성 전에 많은 버그를 예방할 수 있어 비용 대비 효과가 가장 높습니다.
+
+### 각 계층의 트레이드오프
+
+| 특성 | Unit | Integration | E2E |
+|------|------|-------------|-----|
+| 실행 속도 | 빠름 | 중간 | 느림 |
+| 유지보수 비용 | 낮음 | 중간 | 높음 |
+| 실패 원인 파악 | 쉬움 | 중간 | 어려움 |
+| 현실 반영도 | 낮음 | 중간 | 높음 |
+
+**E2E가 실패하면** "어딘가 문제"는 알지만 정확한 위치를 특정하기 어렵습니다.
+**Unit 테스트는** 실패 지점이 명확해 수정 속도가 빠릅니다.
+
+---
+
+## 2. 피라미드 vs 트로피: 어떤 전략을 선택할까?
+
+테스트를 "얼마나, 어디에" 작성할지 결정하는 두 가지 철학이 있습니다.
+
+### 테스트 피라미드
+
+```
+        /\
+       /  \      E2E (적게)
+      /────\
+     /      \    Integration (중간)
+    /────────\
+   /          \  Unit (많이)
+  ──────────────
+```
+
+**핵심**: 작은 단위를 완벽히 검증하면 전체도 동작한다.
+
+### 테스트 트로피
+
+```
+       /\           E2E
+      /  \
+     /────\
+    /      \
+   / Integration \  ← 가장 두꺼움
+  /───────────────\
+  │     Unit      │
+  │───────────────│
+  │    Static     │
+  ─────────────────
+```
+
+**핵심**: 사용자처럼 테스트해야 신뢰할 수 있다.
+
+Kent C. Dodds가 프론트엔드 맥락에서 제안했습니다. 컴포넌트를 고립시켜 테스트하면 오히려 현실과 동떨어집니다.
+
+### 실무 선택 기준
+
+| 구분 | 피라미드 | 트로피 |
+|------|----------|--------|
+| **핵심 가치** | 빠른 피드백 | 높은 신뢰성 |
+| **최대 비중** | Unit | Integration |
+| **적합한 환경** | 복잡한 비즈니스 로직 (백엔드) | UI/상태 관리 중심 (프론트) |
+
+**결론**: 백엔드는 피라미드, 프론트엔드는 트로피를 사용합니다.
+
+---
+
+## 3. TDD: Red-Green-Refactor
+
+TDD는 "테스트를 많이 작성하자"가 아니라, **요구사항을 실행 가능한 명세로 먼저 고정**하는 개발 방법입니다.
+
+```
+Red (실패) → Green (통과) → Refactor (개선) → 반복
+```
+
+1. **Red**: 실패하는 테스트를 먼저 작성합니다.
+2. **Green**: 테스트를 통과시키는 **최소한의** 코드를 작성합니다.
+3. **Refactor**: 테스트가 통과하는 상태에서 구조를 개선합니다.
+
+### TDD의 진짜 가치
+
+- 요구사항이 "실행 가능한 명세"로 고정됨
+- 리팩터링이 안전해짐
+- 자연스럽게 **경계 분리**(의존성 주입/인터페이스 분리)가 강제됨
+
+핵심은 **"최소한"**입니다. Green 단계에서는 예쁘게 만들려 하지 말고, 일단 통과만 시키세요.
+
+---
+
+## 4. 백엔드 TDD 실무 패턴
+
+외부 연동 + DB 작업이 많은 기능은 레이어가 명확해야 TDD가 가능합니다.
+
+###  의존성 흐름 (Dependency Flow)
+
+```
+  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+  │   Router     │ ───▶ │   Protocol   │ ◀─── │    Fake      │
+  │  (ai.py)     │      │ (인터페이스)    │      │  (테스트용)    │
+  └──────────────┘      └──────────────┘      └──────────────┘
+                               │
+                               ▼
+                        ┌──────────────┐
+                        │   Service    │
+                        │   (구현체)    │
+                        └──────────────┘
+                               │
+                               ▼
+                        ┌──────────────┐
+                        │   External   │
+                        │  (DB/API)    │
+                        └──────────────┘
+```
+
+| 레이어       | 역할             | 테스트 전략           |
+|--------------|------------------|-----------------------|
+| Routers      | HTTP 요청/응답   | Integration (Fake DI) |
+| Dependencies | Protocol + DI    | Unit (Fake 주입)      |
+| Services     | 비즈니스 로직    | Unit (Protocol mock)  |
+| External     | DB/Firebase 연동 | E2E (실제 서비스)     |
+| Fakes        | 테스트용 구현체  | -                     |
+
+### Test Double: Stub, Fake, Mock
+
+테스트에서 실제 객체를 대신하는 가짜 객체를 **Test Double**이라고 합니다.
+
+#### Stub — 정해진 값만 반환
+
+```python
+class StubProductRepo:
+    def get_by_id(self, id):
+        return Product(id=1, price=10000)  # 항상 같은 값
+```
+
+#### Fake — 실제처럼 동작하는 간단한 구현체
+
+```python
+class FakeUserRepo:
+    def __init__(self):
+        self.users = {}
+        self.next_id = 1
+
+    async def save(self, user):
+        user.id = self.next_id
+        self.users[self.next_id] = user
+        self.next_id += 1
+        return user
+
+    async def get_by_id(self, id):
+        return self.users.get(id)
+```
+
+#### Mock — 호출 여부를 검증
+
+```python
+def test_주문시_이메일_발송():
+    mock_email = Mock()
+    service = OrderService(email_service=mock_email)
+
+    service.create_order(user_email="test@test.com")
+
+    mock_email.send.assert_called_once()
+```
+
+#### 선택 기준
+
+| 상황 | 선택 |
+|------|------|
+| 값만 필요하면 | **Stub** |
+| 저장/조회 동작이 필요하면 | **Fake** |
+| 호출 여부를 검증해야 하면 | **Mock** |
+
+> **중요**: Fake는 DB를 복제하려고 존재하는 게 아닙니다. Repository 계약(메서드 의미)만 만족하면 됩니다. DB 제약/트랜잭션은 **통합 테스트에서 실제 DB로** 검증하세요.
+
+### Protocol로 인터페이스 정의하기
+
+Python의 `typing.Protocol`은 명시적 상속 없이 인터페이스를 정의할 수 있습니다.
+
+```python
+# app/dependencies/protocol.py
+from typing import Protocol, Optional
+
+class UserRepository(Protocol):
+    async def get_by_id(self, user_id: int) -> Optional[User]:
+        ...
+
+    async def save(self, user: User) -> User:
+        ...
+```
+
+```python
+# app/external/repositories.py (실제 구현)
+class SqlAlchemyUserRepository:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def get_by_id(self, user_id: int) -> Optional[User]:
+        result = await self.session.execute(
+            select(User).where(User.id == user_id)
+        )
+        return result.scalars().first()
+```
+
+```python
+# tests/fakes/fake_user_repo.py (테스트용)
+class FakeUserRepository:
+    def __init__(self):
+        self._storage = {}
+        self._current_id = 0
+
+    async def get_by_id(self, user_id: int) -> Optional[User]:
+        return self._storage.get(user_id)
+```
+
+### dependency_overrides로 테스트하기
+
+```python
+# 프로덕션 코드
+def get_user_repository():
+    return SqlAlchemyUserRepository(session)
+
+@app.post("/users")
+async def create_user(
+    data: UserCreate,
+    repo: UserRepository = Depends(get_user_repository)
+):
+    # ...
+```
+
+```python
+# 테스트 코드
+@pytest.mark.asyncio
+async def test_create_user():
+    fake_repo = FakeUserRepository()
+    app.dependency_overrides[get_user_repository] = lambda: fake_repo
+
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        response = await client.post("/users", json={"email": "test@test.com"})
+        assert response.status_code == 201
+
+        # Fake 내부 상태 직접 검증 가능
+        saved_user = await fake_repo.get_by_id(1)
+        assert saved_user.email == "test@test.com"
+
+    app.dependency_overrides.clear()
+```
+
+### 모든 상태가 아닌 모든 규칙을 테스트
+
+주문 상태가 10가지라면 100가지(10×10) 조합을 테스트해야 할까요? **아닙니다.**
+
+```python
+# 상태 전이 규칙을 한 곳에 정의
+VALID_TRANSITIONS = {
+    "pending": ["approved", "rejected"],
+    "approved": ["shipped", "cancelled"],
+    "shipped": ["delivered"],
+}
+
+# 허용된 전이만 테스트
+@pytest.mark.parametrize("from_status,to_status", [
+    ("pending", "approved"),
+    ("approved", "shipped"),
+])
+def test_유효한_상태_전이(from_status, to_status):
+    order = Order(status=from_status)
+    order.transition_to(to_status)
+    assert order.status == to_status
+
+# 대표적인 불가능한 전이만 테스트
+def test_배송완료_후_취소_불가():
+    order = Order(status="delivered")
+    with pytest.raises(InvalidTransitionError):
+        order.transition_to("cancelled")
+```
+
+상태가 늘어도 **규칙 표만 업데이트**하면 됩니다.
+
+---
+
+## 5. 프론트엔드 TDD: 솔직한 현실과 효과적인 영역
+
+### 솔직한 현실
+
+프론트엔드에서 TDD가 항상 효과적이지는 않습니다.
+
+- UI는 탐색적으로 개발됩니다. 디자인 피드백으로 계속 변경됩니다.
+- "어떻게 보이는가"는 테스트하기 어렵습니다.
+- 브라우저가 더 빠른 피드백을 줍니다.
+
+### TDD가 효과적인 영역
+
+```
+TDD 적용 ✓            Test-After ✓          테스트 안 함 ✓
+──────────────        ──────────────        ──────────────
+• 유틸리티 함수        • UI 컴포넌트          • 단순 프레젠테이션
+• 커스텀 훅           • 탐색적 개발          • 스타일만 있는 컴포넌트
+• 버그 수정           • 자주 바뀌는 부분
+```
+
+### MSW로 API 모킹
+
+```typescript
+// mocks/handlers.ts
+import { http, HttpResponse } from 'msw'
+
+export const handlers = [
+  http.post('/api/login', async ({ request }) => {
+    const body = await request.json()
+
+    if (body.email === 'test@test.com') {
+      return HttpResponse.json({ token: 'fake-token' })
+    }
+    return HttpResponse.json({ error: 'Invalid' }, { status: 401 })
+  })
+]
+```
+
+```typescript
+// LoginForm.test.tsx
+test('로그인 성공 시 대시보드로 이동', async () => {
+  render(<LoginForm />)
+
+  await userEvent.type(screen.getByLabelText('이메일'), 'test@test.com')
+  await userEvent.type(screen.getByLabelText('비밀번호'), 'password')
+  await userEvent.click(screen.getByRole('button', { name: '로그인' }))
+
+  await waitFor(() => {
+    expect(mockRouter.push).toHaveBeenCalledWith('/dashboard')
+  })
+})
+```
+
+### Testing Library 핵심 원칙
+
+**사용자처럼 테스트하라.**
+
+```typescript
+// ❌ 구현 세부사항 테스트
+expect(component.state.isLoading).toBe(true)
+
+// ✅ 사용자가 보는 것 테스트
+expect(screen.getByText('로딩 중...')).toBeInTheDocument()
+```
+
+```typescript
+// ❌ 내부 함수 호출 테스트
+expect(handleClick).toHaveBeenCalled()
+
+// ✅ 결과 테스트
+expect(screen.getByText('1')).toBeInTheDocument()  // 카운트 증가 확인
+```
+
+### Next.js 15 환경에서 MSW 설정
+
+**서버용 (instrumentation.ts)**:
+
+```typescript
+export async function register() {
+  if (process.env.NEXT_PUBLIC_API_MOCKING === 'enabled') {
+    if (process.env.NEXT_RUNTIME === 'nodejs') {
+      const { server } = await import('./mocks/server')
+      server.listen({ onUnhandledRequest: 'bypass' })
+    }
+  }
+}
+```
+
+**클라이언트용 (MSWProvider)**:
+
+```tsx
+'use client'
+
+import { useEffect, useState } from 'react'
+
+export function MSWProvider({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    const init = async () => {
+      if (process.env.NEXT_PUBLIC_API_MOCKING === 'enabled') {
+        const { worker } = await import('@/mocks/browser')
+        await worker.start({ onUnhandledRequest: 'bypass' })
+      }
+      setReady(true)
+    }
+    init()
+  }, [])
+
+  if (!ready) return null
+  return <>{children}</>
+}
+```
+
+---
+
+## 6. 데이터와 환경 전략
+
+풀스택에서 테스트가 무너지는 이유는 대개 코드가 아니라 **데이터와 환경**입니다.
+
+### 기반 데이터를 2종류로 분리
+
+| 종류 | 설명 | 관리 방법 |
+|------|------|----------|
+| **Reference Seed** | 상태 코드, 권한 코드 같은 룩업 데이터 | 버전 관리되는 seed로 로컬/CI 동일하게 주입 |
+| **Business Data** | 회원/상품 같은 업무 데이터 | 테스트마다 factory/fixture로 생성 |
+
+### 환경별 전략
+
+| 환경 | 전략 |
+|------|------|
+| **Local** | 빠른 테스트 (외부 stub, 로컬 DB) + 정적 분석 |
+| **CI (PR)** | Unit + 짧은 Integration + 핵심 smoke만 |
+| **Nightly/QA** | 무거운 Integration + 핵심 E2E |
+| **Production** | 테스트가 아닌 관측/점진 배포/롤백 전략 |
+
+---
+
+## 7. 피해야 할 안티패턴 3가지
+
+### 1. E2E만 잔뜩 (아이스크림 콘)
+
+- 느리고 flaky
+- 원인 추적 지옥
+- CI 신뢰도 하락
+
+### 2. Mock-heavy 테스트
+
+- **구현**을 테스트하면 리팩터링이 곧 테스트 수정이 됨
+- 테스트가 "자산"이 아니라 "짐"이 됨
+
+### 3. 로컬이 dev/qa DB를 공유
+
+- 개발 실수로 데이터 오염
+- 테스트 재현성 붕괴
+- 권한/보안 문제로 운영 리스크 증가
+
+---
+
+## 8. 프로젝트 구조 예시
+
+### 백엔드 (FastAPI)
+
+```
+app/
+├── config/               # 설정
+├── dependencies/         # 의존성 주입
+│   ├── protocol.py       # 인터페이스 정의
+│   ├── auth.py           # 인증 의존성
+│   └── database.py       # DB 세션
+├── services/             # 비즈니스 로직
+├── external/             # 외부 연동 (DB, Firebase)
+├── models/               # SQLAlchemy 모델
+├── schemas/              # Pydantic 스키마
+└── routers/              # API 엔드포인트
+
+tests/
+├── fakes/                # Fake 구현체
+├── unit/                 # 단위 테스트
+├── integration/          # 통합 테스트 (DI 사용)
+└── e2e/                  # E2E 테스트 (실제 서비스)
+```
+
+### 프론트엔드 (Next.js)
+
+```
+src/
+├── components/
+│   └── features/
+│       └── LoginForm/
+│           ├── LoginForm.tsx
+│           └── LoginForm.test.tsx
+├── hooks/
+│   ├── useAuth.ts
+│   └── useAuth.test.ts
+└── lib/
+    └── utils/
+        ├── format.ts
+        └── format.test.ts
+
+mocks/
+├── handlers.ts           # MSW 핸들러
+├── browser.ts            # 클라이언트용
+└── server.ts             # 서버용
+
+tests/
+└── e2e/                  # Playwright
+```
+
+---
+
+## 9. 실무 적용 체크리스트
+
+### 백엔드
+
+- [ ] 외부 연동(DB, API, 이메일)을 **인터페이스(Protocol)로 분리**했다
+- [ ] 의존성 주입으로 테스트 시 Fake/Mock 교체가 가능하다
+- [ ] 비즈니스 로직이 Service 계층에 분리되어 있다
+- [ ] 상태 전이 규칙이 한 곳에 정의되어 있다
+- [ ] Fake는 DB를 복제하지 않고 **계약만 구현**한다
+
+### 프론트엔드
+
+- [ ] 복잡한 로직이 커스텀 훅이나 유틸 함수로 분리되어 있다
+- [ ] MSW로 API를 모킹하고 있다
+- [ ] **구현 세부사항**이 아닌 **사용자 행동**을 테스트한다
+- [ ] 버그 수정 시 재현 테스트를 먼저 작성한다
+
+### 환경
+
+- [ ] Reference Seed(고정)와 Business Data(동적)를 분리했다
+- [ ] CI에서 E2E를 무리하게 늘리지 않고 smoke만 남겼다
+- [ ] 로컬 개발 시 공유 DB가 아닌 독립 환경을 사용한다
+
+---
+
+## 마치며
+
+테스트 전략에 정답은 없습니다. 하지만 방향은 있습니다.
+
+- **백엔드**: 피라미드 구조, 비즈니스 로직 단위 테스트, 외부 연동 인터페이스 분리
+- **프론트엔드**: 트로피 구조, 통합 테스트 중심, 사용자처럼 테스트
+
+가장 중요한 질문은 이것입니다:
+
+> **"이 테스트가 통과하면 배포해도 괜찮겠다는 확신이 드는가?"**
+
+그 확신을 주는 테스트를 작성하면 됩니다.
+
+---
+
+## 참고 도구
+
+| 환경 | 테스트 러너 | 모킹 | E2E |
+|------|------------|------|-----|
+| Python/FastAPI | pytest | unittest.mock, FakeRepository | - |
+| Next.js/React | Vitest | MSW | Chrome Extension |
+| TypeScript | Vitest | MSW | Chrome Extension |
