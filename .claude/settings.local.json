@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(git config:*)",
+      "Bash(mv:*)",
+      "Bash(sips:*)",
+      "Bash(npm run dev)",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(cat:*)",
+      "Bash(node ./node_modules/.bin/next dev:*)",
+      "Bash(npm install)",
+      "Bash(git checkout:*)",
+      "Bash(chmod:*)",
+      "Bash(./scripts/sync-main.sh:*)",
+      "Bash(./scripts/merge-to-main.sh:*)",
+      "Bash(npm run build:*)"
+    ]
+  }
+}
