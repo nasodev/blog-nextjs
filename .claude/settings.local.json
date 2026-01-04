@@ -14,7 +14,9 @@
       "Bash(chmod:*)",
       "Bash(./scripts/sync-main.sh:*)",
       "Bash(./scripts/merge-to-main.sh:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(grep:*)",
+      "Bash(git pull:*)"
     ]
   }
 }
