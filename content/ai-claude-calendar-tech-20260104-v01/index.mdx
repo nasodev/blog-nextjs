@@ -437,6 +437,67 @@ test('일정 생성 및 표시', async ({ page }) => {
 
 ---
 
+## Part 5: 배포
+
+### Nginx 설정 및 SSL 발급
+
+> 서버의 기본 환경(Ubuntu Server, Nginx, Certbot, 방화벽 등)은 [블로그 서버 세팅](https://blog.funq.kr/blogs/server-setup-20251214-v01) 글에서 이미 구성해두었다. 여기서는 캘린더 앱을 위한 설정만 추가하면 된다.
+
+**1. 설정 파일 생성**
+```bash
+sudo nano /etc/nginx/sites-available/calendar.conf
+```
+
+**2. 내용 붙여넣기 후 저장**
+
+에디터에서 아래 내용을 붙여넣고, `Ctrl+O` (저장) → `Enter` → `Ctrl+X` (종료)
+
+```nginx
+server {
+    server_name calendar.funq.kr;
+
+    location / {
+        proxy_pass http://127.0.0.1:3002;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    listen 80;
+}
+```
+
+**3. 심볼릭 링크 생성**
+```bash
+sudo ln -s /etc/nginx/sites-available/calendar.conf /etc/nginx/sites-enabled/
+```
+
+**4. Nginx 설정 문법 테스트**
+```bash
+sudo nginx -t
+# syntax is ok 메시지 확인
+```
+
+**5. Nginx 재시작**
+```bash
+sudo systemctl reload nginx
+```
+
+**6. SSL 인증서 발급 (Certbot)**
+```bash
+sudo certbot --nginx -d calendar.funq.kr
+```
+
+Certbot이 Nginx 설정을 자동으로 수정하고 HTTPS 인증서를 적용한다.
+
+---
+
 ## 결과물
 
 ### 지원하는 기능
@@ -491,6 +552,7 @@ test('일정 생성 및 표시', async ({ page }) => {
 2. **캘린더 풀스택 개발** (현재 글) - 기술 구현 상세
 
 ---
+**GitHub**: https://github.com/nasodev/calendar
 
 **Live Demo**: https://calendar.funq.kr
 
