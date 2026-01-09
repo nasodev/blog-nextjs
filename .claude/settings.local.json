@@ -16,7 +16,8 @@
       "Bash(./scripts/merge-to-main.sh:*)",
       "Bash(npm run build:*)",
       "Bash(grep:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "WebFetch(domain:playwright.dev)"
     ]
   }
 }

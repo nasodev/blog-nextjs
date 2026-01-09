@@ -1,0 +1,325 @@
+---
+title: "Playwright Agents: AI가 테스트를 설계하고, 작성하고, 고친다"
+description: "Planner, Generator, Healer - 세 에이전트의 협업으로 E2E 테스트 자동화의 새로운 패러다임을 경험하다"
+image: "../../public/blog-cover/ai-playwright-agents-20260109-v01.jpg"
+publishedAt: "2026-01-09 10:00:00"
+updatedAt: "2026-01-09 10:00:00"
+author: "fundev"
+isPublished: true
+tags:
+  - playwright
+  - testing
+  - ai
+  - agent
+  - claude-code
+  - mcp
+---
+
+E2E 테스트 코드를 작성하는 일은 리소스가 상당히 많이 들어 가는 일이라 효율을 생각하면 거의 만들지 못한다. 선택자(Selector)가 바뀌면 테스트가 깨지고, 깨진 테스트를 고치는 데 시간을 쏟다 보면 정작 새로운 기능 개발에 집중하기 어렵다.
+
+**Playwright**에서 도입된 **Test Agents**는 이 문제에 대한 흥미로운 해답을 제시한다. AI가 애플리케이션을 탐색하고, 테스트 계획을 세우고, 코드를 생성하고, 심지어 실패한 테스트를 스스로 고친다.
+
+---
+
+## 세 에이전트의 역할
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Playwright Agents Flow                       │
+│                                                                 │
+│   🎭 Planner          🎭 Generator         🎭 Healer            │
+│   ┌───────────┐       ┌───────────┐       ┌───────────┐        │
+│   │ 앱 탐색     │  ──▶  │ 코드 생성   │  ──▶  │ 실패 수정   │        │
+│   │           │       │           │       │           │        │
+│   │ specs/*.md│       │ *.spec.ts │       │ 선택자 갱신  │        │
+│   └───────────┘       └───────────┘       └───────────┘        │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Planner: 앱을 탐색하고 테스트 계획을 세운다
+
+Planner는 브라우저를 열고 애플리케이션을 직접 탐색한다. 로그인 페이지가 있으면 어떤 필드가 있는지, 버튼은 무엇인지 파악하고, 이를 바탕으로 **마크다운 형식의 테스트 계획서**를 작성한다.
+
+```markdown
+# Login Test Plan
+
+## Scenario 1: Successful Login
+**Steps:**
+  1. Navigate to /login
+  2. Enter 'funq' in the 이름 field
+  3. Enter 'password' in the 비밀번호 field
+  4. Click 로그인 button
+
+**Expected Results:**
+  - Redirect to main calendar page
+  - User session is established
+```
+
+탐색적 테스트(Exploratory Testing)를 AI가 대신 해주는 셈이다.
+
+### Generator: 계획을 실행 가능한 코드로 변환한다
+
+Generator는 Planner가 작성한 계획을 읽고, **실제로 동작하는 Playwright 테스트 코드**를 생성한다.
+
+핵심은 **라이브 검증**이다. 코드를 작성하기 전에 브라우저를 열고 해당 동작이 실제로 작동하는지 확인한다. `getByRole('button', { name: '로그인' })`이 실제로 버튼을 찾는지 검증한 후 코드를 작성한다.
+
+```typescript
+test('should verify successful login', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('이름').fill('funq');
+  await page.getByLabel('비밀번호').fill('password');
+  await page.getByRole('button', { name: '로그인' }).click();
+
+  await expect(page).toHaveURL('/');
+});
+```
+
+### Healer: 실패한 테스트를 자동으로 수정한다
+
+개발자가 버튼 텍스트를 '로그인'에서 'Sign In'으로 바꿨다고 하자. 테스트는 실패한다.
+
+Healer는 실패 지점의 **접근성 트리(Accessibility Tree)**를 분석하여 의미론적으로 동일한 요소를 찾아낸다. "이름이 '로그인'인 버튼은 없지만, 같은 위치에 'Sign In'이라는 버튼이 있네" → 선택자를 수정하고 테스트를 재실행한다.
+
+```
+❌ Error: getByRole('button', { name: '로그인' }) - Element not found
+✅ Fix: Updated to getByRole('button', { name: 'Sign In' })
+```
+
+---
+
+## 설치 및 설정 (Claude Code)
+
+### 1. Playwright 설치
+
+```bash
+npm init playwright@latest
+```
+
+### 2. 에이전트 초기화
+
+```bash
+npx playwright init-agents --loop=claude
+```
+
+이 명령어가 생성하는 파일들:
+
+```
+.claude/agents/
+├── playwright-test-planner.md    # Planner 에이전트 정의
+├── playwright-test-generator.md  # Generator 에이전트 정의
+└── playwright-test-healer.md     # Healer 에이전트 정의
+specs/
+└── README.md                     # 테스트 계획서 저장 위치
+tests/
+└── seed.spec.ts                  # 시드 테스트 (로그인 등 초기 설정)
+.mcp.json                         # MCP 서버 설정
+```
+
+### 3. MCP 서버 추가
+
+```bash
+claude mcp add playwright npx @playwright/mcp@latest
+```
+
+이제 Claude Code에서 `/agents` 명령어로 에이전트 목록을 확인할 수 있다.
+
+---
+
+## 실제 사용 워크플로우
+
+### Step 1: Planner에게 테스트 계획 요청
+
+```
+Use the playwright-test-planner subagent to explore http://localhost:3000
+and create a test plan for:
+1. 로그인 기능
+2. 캘린더 뷰 전환 (월/주/일)
+3. 일정 생성
+
+Save it as specs/calendar.md.
+Use tests/seed.spec.ts as the seed.
+```
+
+Planner가 앱을 탐색하고 `specs/calendar.md`에 상세한 테스트 시나리오를 작성한다.
+
+### Step 2: Generator에게 코드 생성 요청
+
+```
+Use the playwright-test-generator subagent to generate tests
+from specs/calendar.md.
+Put generated tests under tests/calendar/.
+```
+
+Generator가 계획을 바탕으로 실행 가능한 테스트 코드를 생성한다.
+
+### Step 3: 테스트 실행 및 Healer 활용
+
+```bash
+npx playwright test
+```
+
+실패하는 테스트가 있다면:
+
+```
+Use the playwright-test-healer subagent to fix the failing tests.
+Keep the original test intent - only fix locators and waits.
+```
+
+---
+
+## 실제 적용: 가족 캘린더 프로젝트
+
+[캘린더 프로젝트](https://blog.funq.kr/blogs/ai-claude-calendar-tech-20260104-v01)에 Playwright Agents를 적용해 보았다.
+
+### Planner가 생성한 테스트 계획 (일부)
+
+```markdown
+### 4.3. Create weekly recurring event with specific weekdays
+
+**File:** `tests/event-management/recurring-weekly-custom.spec.ts`
+
+**Steps:**
+  1. Open event creation dialog
+  2. Enter title '수영 수업'
+  3. Select '매주' (Weekly) from recurrence dropdown
+  4. Click weekday buttons: 월, 수, 금
+  5. Verify selected buttons are highlighted
+  6. Save the event
+
+**Expected Results:**
+  - Multiple weekdays can be selected
+  - Backend receives weekdays: ['MO', 'WE', 'FR']
+  - Calendar shows event on correct days
+```
+
+한글 UI를 자연스럽게 인식하고, 반복 일정의 복잡한 로직까지 계획에 포함시켰다.
+
+### Generator가 생성한 코드
+
+```typescript
+test.describe('Adding New Todos', () => {
+  test('Add Valid Todo', async ({ page }) => {
+    const todoInput = page.getByRole('textbox',
+      { name: 'What needs to be done?' });
+    await todoInput.click();
+    await todoInput.fill('Buy groceries');
+    await todoInput.press('Enter');
+
+    await expect(page.getByText('Buy groceries')).toBeVisible();
+    await expect(page.getByText('1 item left')).toBeVisible();
+  });
+});
+```
+
+`getByRole`, `getByText` 같은 **사용자 중심 로케이터**를 우선 사용한다. CSS 선택자에 의존하지 않으므로 UI 변경에 더 강건하다.
+
+---
+
+## 핵심 설계 원리: 접근성 트리(Accessibility Tree)
+
+Playwright Agents가 다른 AI 자동화 도구와 다른 점은 **스크린샷이 아닌 접근성 트리**를 사용한다는 것이다.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Vision Model 방식              │  Accessibility Tree 방식   │
+├─────────────────────────────────┼────────────────────────────┤
+│  스크린샷 픽셀 분석              │  DOM 구조화된 데이터        │
+│  해상도에 따라 오차 발생          │  역할(Role) + 이름(Name)    │
+│  토큰 소모량 높음                │  토큰 효율적               │
+│  이미지 처리 오버헤드            │  빠른 응답 속도            │
+└─────────────────────────────────┴────────────────────────────┘
+```
+
+스크린 리더가 시각 장애인에게 웹 페이지를 설명하는 것과 같은 방식으로 AI에게 페이지 구조를 전달한다. 광고나 장식 요소 같은 노이즈가 제거되고, 버튼/링크/입력 필드 같은 **의미론적 정보**만 남는다.
+
+---
+
+## Seed Test의 중요성
+
+복잡한 인증이 필요한 앱에서는 `seed.spec.ts`가 핵심이다.
+
+```typescript
+// tests/seed.spec.ts
+import { test as setup, expect } from '@playwright/test';
+import path from 'path';
+
+const authFile = path.join(__dirname, '../playwright/.auth/user.json');
+
+setup('authenticate', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('이름').fill(process.env.E2E_USER!);
+  await page.getByLabel('비밀번호').fill(process.env.E2E_PASS!);
+  await page.getByRole('button', { name: '로그인' }).click();
+
+  await expect(page).toHaveURL('/');
+
+  // 세션 상태 저장
+  await page.context().storageState({ path: authFile });
+});
+```
+
+이렇게 설정하면 Planner/Generator/Healer 모두 **인증된 상태에서 시작**한다. 로그인 페이지를 분석하느라 토큰을 낭비하지 않고, 핵심 기능 테스트에 집중할 수 있다.
+
+---
+
+## 실무 팁
+
+### 1. Healer에게 명확한 가이드라인을 준다
+
+Healer가 테스트를 "통과"시키기 위해 assert를 삭제하거나 의도를 바꿀 수 있다. 프롬프트에 제약을 명시한다:
+
+```
+Fix the failing tests, but:
+- Keep the original test intent
+- Do NOT remove assertions
+- Only update locators and waits
+```
+
+### 2. Playwright 업데이트 시 에이전트 재생성
+
+```bash
+npx playwright init-agents --loop=claude
+```
+
+새 버전에서 추가된 도구나 지침을 반영하기 위해 에이전트 정의 파일을 갱신한다.
+
+### 3. 토큰 비용 관리
+
+MCP 서버를 로드하는 것만으로도 4,000~8,000 토큰이 소모된다. 테스트 작업이 끝나면 서버를 비활성화하거나, 세션을 분리하는 것이 좋다.
+
+---
+
+## 한계점
+
+### 로직 변경은 감지하지 못한다
+
+Healer는 **선택자 변경**에는 강하지만, 애플리케이션의 **비즈니스 로직이 변경**되어 테스트가 실패하는 경우는 구분하지 못한다. 이 경우 `test.fixme()`로 마킹하고 개발자 개입을 요청한다.
+
+### 비대화형 설계
+
+Healer는 사용자에게 질문하지 않고 가장 합리적인 수정을 시도한다. 복잡한 상황에서는 의도와 다른 수정이 적용될 수 있으므로, 변경 사항을 반드시 리뷰해야 한다.
+
+### 토큰 비용
+
+복잡한 앱을 탐색하면 토큰 소모가 상당하다.
+
+---
+
+## 마치며
+
+Playwright Agents는 **테스트 작성의 패러다임을 바꾸는 시도**다.
+
+기존에는 개발자가 모든 선택자와 단계를 명시적으로 코딩해야 했다. 이제는 "사용자 등록 절차를 검증하라"는 고수준의 의도만 전달하면 된다.
+
+물론 아직 완벽하지는 않다. 토큰 비용, 복잡한 로직 변경 감지, 비대화형 설계 등 개선이 필요한 부분이 있다. 하지만 방향성은 분명하다. **QA 엔지니어의 역할은 '테스트 스크립터'에서 '에이전트 아키텍트'로 진화**할 것이다.
+
+개별 테스트 케이스를 작성하는 것보다, 에이전트가 따를 시스템 프롬프트를 설계하고, 견고한 시드 테스트와 픽스처를 구축하는 것이 핵심 역량이 될 것이다.
+
+---
+
+**참고 자료**
+- [Playwright Test Agents 공식 문서](https://playwright.dev/docs/test-agents)
+- [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
+
+*궁금한 점은 댓글로 남겨주세요!*
