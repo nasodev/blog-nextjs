@@ -1,0 +1,687 @@
+---
+title: "React 19 + Vite 7 + PWA로 고정밀 타이머 앱 만들기"
+description: "스포츠 스태킹용 타이머 PWA 개발기 - requestAnimationFrame 기반 정밀 타이머, 터치 이벤트 처리, LocalStorage 패턴까지"
+image: "../../public/blog-cover/react-vite-pwa-timer-20260116-v01.jpg"
+publishedAt: "2026-01-16 10:00:00"
+updatedAt: "2026-01-16 10:00:00"
+author: "fundev"
+isPublished: true
+tags:
+  - react
+  - vite
+  - pwa
+  - typescript
+  - tailwindcss
+---
+
+아이가 학교에서 컵스태킹(스포츠 스태킹)을 배워왔다. 집에서도 연습하고 싶은데 타이머가 필요하다고 했다. 전용 타이머를 사기엔 애매하고, 스마트폰 스톱워치는 조작이 번거롭다.
+
+그래서 태블릿에서 **화면 전체를 터치**하면 시작/정지되는 간단한 타이머를 만들기로 했다. PWA로 만들면 홈 화면에 추가해서 앱처럼 쓸 수 있고, 오프라인에서도 동작한다.
+
+> **데모**: [cupstacking.funq.kr](https://cupstacking.funq.kr)
+
+## 기술 스택
+
+| Stack | Technology |
+|-------|------------|
+| Framework | React 19.2 + TypeScript 5.9 |
+| Build | Vite 7.2 + vite-plugin-pwa |
+| Styling | Tailwind CSS v4 |
+| Routing | React Router v7 |
+
+---
+
+## 1. requestAnimationFrame 기반 타이머
+
+### setInterval의 한계
+
+```typescript showLineNumbers title="bad-timer.ts"
+// ❌ 부정확한 방식
+setInterval(() => {
+  setTime(prev => prev + 10);
+}, 10);
+```
+
+`setInterval`은 정확한 간격을 보장하지 않는다. 브라우저 탭이 백그라운드로 가면 스로틀링되고, 콜백 실행 시간이 누적되어 드리프트가 발생한다.
+
+### requestAnimationFrame + Date.now()
+
+```typescript showLineNumbers title="useTimer.ts"
+export type TimerState = 'idle' | 'running' | 'stopped';
+
+export function useTimer() {
+  const [time, setTime] = useState(0);
+  const [state, setState] = useState<TimerState>('idle');
+  const startTimeRef = useRef<number>(0);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (state !== 'running') return;
+
+    const updateTime = () => {
+      const elapsed = Date.now() - startTimeRef.current;
+      setTime(elapsed);
+      rafRef.current = requestAnimationFrame(updateTime);
+    };
+
+    rafRef.current = requestAnimationFrame(updateTime);
+
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, [state]);
+
+  const start = useCallback(() => {
+    startTimeRef.current = Date.now();
+    setState('running');
+  }, []);
+
+  const stop = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
+    const finalTime = Date.now() - startTimeRef.current;
+    setTime(finalTime);
+    setState('stopped');
+    return finalTime;
+  }, []);
+
+  const reset = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
+    setTime(0);
+    setState('idle');
+  }, []);
+
+  const toggle = useCallback(() => {
+    if (state === 'idle') {
+      start();
+      return null;
+    } else if (state === 'running') {
+      return stop();
+    }
+    return null;
+  }, [state, start, stop]);
+
+  return { time, state, start, stop, reset, toggle };
+}
+```
+
+**핵심 포인트:**
+- `Date.now()` 기준으로 경과 시간 계산 → 누적 오차 없음
+- `requestAnimationFrame` → 디스플레이 주사율에 동기화 (보통 60fps)
+- `useRef`로 시작 시간 저장 → 리렌더링 영향 없음
+- `toggle()` → 시작/정지를 하나의 함수로 처리, 정지 시 최종 시간 반환
+
+### 시간 포맷팅
+
+```typescript showLineNumbers title="formatTime.ts"
+export function formatTime(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const milliseconds = ms % 1000;
+  return `${seconds}.${milliseconds.toString().padStart(3, '0')}`;
+}
+// 12345 → "12.345"
+```
+
+---
+
+## 2. PWA (Progressive Web App) 완벽 가이드
+
+PWA는 웹 기술로 만든 앱을 네이티브 앱처럼 사용할 수 있게 해주는 기술이다. 이 타이머 앱에 PWA를 적용한 이유:
+
+1. **홈 화면 설치** - 아이콘을 탭하면 바로 실행
+2. **전체 화면** - 브라우저 주소창 없이 앱처럼 보임
+3. **오프라인 지원** - 인터넷 없이도 동작
+4. **자동 업데이트** - 새 버전 배포 시 자동 반영
+
+### vite-plugin-pwa 설정
+
+```typescript showLineNumbers title="vite.config.ts"
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
+
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      manifest: {
+        name: '컵쌓기 타이머',
+        short_name: '컵타이머',
+        description: '스포츠 스태킹 타이머 앱',
+        theme_color: '#10b981',
+        background_color: '#ffffff',
+        display: 'standalone',
+        orientation: 'portrait',
+        icons: [
+          {
+            src: 'pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          }
+        ]
+      }
+    })
+  ],
+})
+```
+
+### manifest 속성 설명
+
+| 속성 | 값 | 설명 |
+|------|-----|------|
+| `name` | 컵쌓기 타이머 | 앱 설치 시 표시되는 전체 이름 |
+| `short_name` | 컵타이머 | 홈 화면 아이콘 아래 표시 (12자 이내 권장) |
+| `display` | standalone | 브라우저 UI 숨김, 네이티브 앱처럼 표시 |
+| `orientation` | portrait | 세로 모드 고정 (타이머 특성상) |
+| `theme_color` | #10b981 | 상태바 색상 (emerald-500) |
+| `background_color` | #ffffff | 앱 로딩 중 스플래시 배경색 |
+
+### display 모드 비교
+
+```
+┌─────────────────────────────────────────────────────┐
+│  fullscreen   │  standalone   │    browser         │
+├───────────────┼───────────────┼────────────────────┤
+│  상태바 숨김    │  상태바만 표시  │  브라우저 UI 전체   │
+│  게임/몰입형    │  일반 앱       │  웹사이트          │
+│  주소창 없음    │  주소창 없음    │  주소창 있음        │
+└─────────────────────────────────────────────────────┘
+```
+
+`standalone`을 선택한 이유: 상태바(시계, 배터리)는 보이면서 브라우저 UI는 숨김.
+
+### registerType: autoUpdate
+
+```typescript
+registerType: 'autoUpdate'
+```
+
+Service Worker 업데이트 전략:
+
+| 전략 | 동작 |
+|------|------|
+| `autoUpdate` | 새 버전 감지 시 자동으로 Service Worker 업데이트 |
+| `prompt` | 사용자에게 업데이트 여부를 묻는 UI 표시 |
+
+`autoUpdate`를 선택한 이유: 타이머 앱은 상태 손실 걱정이 적고, 항상 최신 버전을 쓰는 게 좋다.
+
+### 아이콘 준비
+
+PWA에는 최소 2개의 아이콘이 필요하다:
+
+```
+public/
+├── apple-touch-icon.png  # iOS Safari용 (180x180)
+├── favicon.ico           # 브라우저 탭용
+├── pwa-192x192.png       # Android 홈 화면용
+└── pwa-512x512.png       # 스플래시 화면용
+```
+
+sharp 라이브러리로 원본 SVG에서 자동 생성:
+
+```typescript showLineNumbers title="scripts/generate-icons.ts"
+import sharp from 'sharp';
+
+const sizes = [192, 512];
+const svgBuffer = await fs.readFile('public/icon.svg');
+
+for (const size of sizes) {
+  await sharp(svgBuffer)
+    .resize(size, size)
+    .png()
+    .toFile(`public/pwa-${size}x${size}.png`);
+}
+```
+
+### iOS Safari 대응
+
+iOS에서는 `apple-touch-icon`을 별도로 지정해야 한다:
+
+```html title="index.html"
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+```
+
+### 빌드 결과물
+
+`npm run build` 실행 시 자동 생성되는 파일:
+
+```
+dist/
+├── sw.js              # Service Worker
+├── workbox-*.js       # Workbox 런타임
+├── manifest.webmanifest
+└── registerSW.js      # SW 등록 스크립트
+```
+
+---
+
+## 3. 터치/클릭 이벤트 중복 방지
+
+모바일에서는 `touchend` 후 `click` 이벤트가 300ms 지연되어 발생한다. 두 이벤트가 모두 처리되면 타이머가 두 번 토글된다.
+
+```typescript showLineNumbers title="Timer.tsx" {4-9,11-14}
+const touchHandledRef = useRef(false);
+
+const handleTouchEnd = useCallback(
+  (e: React.TouchEvent) => {
+    e.preventDefault();
+    touchHandledRef.current = true;
+    handleTouch();
+    setTimeout(() => {
+      touchHandledRef.current = false;
+    }, 300);
+  },
+  [handleTouch]
+);
+
+const handleClick = useCallback(() => {
+  if (touchHandledRef.current) return; // 터치 후 클릭 무시
+  handleTouch();
+}, [handleTouch]);
+```
+
+```tsx showLineNumbers title="Timer.tsx"
+<div
+  className={`min-h-full ${bgColor} flex flex-col`}
+  onClick={handleClick}
+  onTouchEnd={handleTouchEnd}
+>
+```
+
+**동작 흐름:**
+1. 터치 → `touchHandledRef = true` → 타이머 토글
+2. 300ms 내 click 발생 → `touchHandledRef` 체크 → 무시
+3. 300ms 후 → `touchHandledRef = false` → 다음 입력 대기
+
+---
+
+## 4. LocalStorage 커스텀 훅 패턴
+
+### 플레이어/기록 관리
+
+```typescript showLineNumbers title="useLocalStorage.ts"
+const PLAYERS_KEY = 'cupstacking_players';
+const RECORDS_KEY = 'cupstacking_records';
+
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+export function usePlayers() {
+  const [players, setPlayers] = useState<Player[]>(() => {
+    const stored = localStorage.getItem(PLAYERS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem(PLAYERS_KEY, JSON.stringify(players));
+  }, [players]);
+
+  const addPlayer = useCallback((name: string): Player => {
+    const newPlayer: Player = {
+      id: generateId(),
+      name: name.trim(),
+      createdAt: Date.now(),
+    };
+    setPlayers((prev) => [...prev, newPlayer]);
+    return newPlayer;
+  }, []);
+
+  const removePlayer = useCallback((id: string) => {
+    setPlayers((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  const getPlayer = useCallback(
+    (id: string) => players.find((p) => p.id === id),
+    [players]
+  );
+
+  return { players, addPlayer, removePlayer, getPlayer };
+}
+```
+
+**설계 결정:**
+- 초기값: `useState` 초기화 함수에서 localStorage 읽기 (SSR 호환)
+- 저장: `useEffect`로 상태 변경 감지하여 자동 저장
+- ID 생성: timestamp + random으로 충돌 방지
+
+### 기록 조회 최적화
+
+```typescript showLineNumbers title="useLocalStorage.ts"
+const getBestRecord = useCallback(
+  (eventType: TimeRecord['eventType'], playerIds: string[]) => {
+    const key = [...playerIds].sort().join(',');
+    return records
+      .filter(
+        (r) =>
+          r.eventType === eventType &&
+          [...r.playerIds].sort().join(',') === key
+      )
+      .sort((a, b) => a.time - b.time)[0];
+  },
+  [records]
+);
+```
+
+`playerIds`를 정렬 후 문자열로 변환하여 비교 → `[A, B]`와 `[B, A]`를 동일하게 처리.
+
+---
+
+## 5. TypeScript 도메인 모델링
+
+```typescript showLineNumbers title="types/index.ts"
+export type EventType = '3-3-3' | '3-6-3' | 'cycle' | 'doubles' | 'team-3-6-3';
+
+export interface Player {
+  id: string;
+  name: string;
+  createdAt: number;
+}
+
+export interface TimeRecord {
+  id: string;
+  eventType: EventType;
+  playerIds: string[];
+  time: number; // milliseconds
+  createdAt: number;
+}
+
+export const INDIVIDUAL_EVENTS: EventType[] = ['3-3-3', '3-6-3', 'cycle'];
+export const TEAM_EVENTS: EventType[] = ['doubles', 'team-3-6-3'];
+
+export const EVENT_NAMES: { [key in EventType]: string } = {
+  '3-3-3': '3-3-3',
+  '3-6-3': '3-6-3',
+  'cycle': '사이클',
+  'doubles': '더블',
+  'team-3-6-3': '팀 3-6-3',
+};
+
+export const EVENT_MIN_PLAYERS: { [key in EventType]: number } = {
+  '3-3-3': 1,
+  '3-6-3': 1,
+  'cycle': 1,
+  'doubles': 2,
+  'team-3-6-3': 2,
+};
+```
+
+`{ [key in EventType]: string }` → 모든 종목에 대한 값이 필수. 새 종목 추가 시 컴파일 에러로 누락 방지.
+
+---
+
+## 6. Tailwind CSS v4 설정
+
+```css showLineNumbers title="index.css"
+@import "tailwindcss";
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Prevent pull-to-refresh and overscroll */
+html {
+  overscroll-behavior: none;
+}
+
+/* Disable text selection on timer screen */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+```
+
+### 상태별 배경색
+
+```tsx showLineNumbers title="Timer.tsx"
+const bgColor =
+  state === 'idle'
+    ? 'bg-white'
+    : state === 'running'
+    ? 'bg-emerald-400'
+    : 'bg-amber-300';
+```
+
+시각적 피드백: 대기(흰색) → 진행(초록) → 완료(노랑)
+
+### 반응형 폰트 크기
+
+```tsx showLineNumbers title="Timer.tsx"
+<p
+  className="font-mono font-bold text-gray-800"
+  style={{ fontSize: 'min(20vw, 120px)' }}
+>
+  {formatTime(time)}
+</p>
+```
+
+`min(20vw, 120px)` → 뷰포트 너비의 20%이지만 최대 120px. 태블릿부터 데스크탑까지 적절한 크기 유지.
+
+---
+
+## 7. React Router v7 URL 파라미터
+
+### 라우트 정의
+
+```tsx showLineNumbers title="App.tsx"
+<Routes>
+  <Route path="/" element={<Home />} />
+  <Route path="/select/:eventType" element={<PlayerSelect />} />
+  <Route path="/timer/:eventType" element={<Timer />} />
+  <Route path="/result/:eventType" element={<Result />} />
+  <Route path="/ranking" element={<Ranking />} />
+  <Route path="/players" element={<PlayerManage />} />
+</Routes>
+```
+
+### Path + Query 파라미터 조합
+
+```typescript showLineNumbers title="Timer.tsx"
+const { eventType } = useParams<{ eventType: EventType }>();
+const [searchParams] = useSearchParams();
+
+const playerIds = useMemo(() => {
+  const param = searchParams.get('players');
+  return param ? param.split(',').filter(Boolean) : [];
+}, [searchParams]);
+```
+
+URL: `/timer/3-6-3?players=abc123,def456` → `playerIds = ["abc123", "def456"]`
+
+---
+
+## 8. 실수 방지 로직
+
+### 1초 보호
+
+아이들이 실수로 바로 정지하는 걸 방지:
+
+```typescript showLineNumbers title="Timer.tsx" {3-4}
+const handleTouch = useCallback(() => {
+  if (state === 'stopped') return;
+  // 1초 미만에서 정지 불가
+  if (state === 'running' && time < 1000) return;
+
+  const finalTime = toggle();
+  if (finalTime !== null) {
+    const record = addRecord(eventType as EventType, playerIds, finalTime);
+    setSavedRecordId(record.id);
+  }
+}, [state, time, toggle, addRecord, eventType, playerIds]);
+```
+
+### 기록 삭제 후 재시도
+
+잘못 측정했을 때 기록을 삭제하고 다시 시작:
+
+```typescript showLineNumbers title="Timer.tsx"
+const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
+
+const handleDeleteRecord = useCallback(() => {
+  if (savedRecordId) {
+    deleteRecord(savedRecordId);
+    setSavedRecordId(null);
+  }
+  reset();
+}, [savedRecordId, deleteRecord, reset]);
+```
+
+기록 저장 시 ID를 보관 → 삭제 버튼으로 해당 기록만 제거 가능.
+
+---
+
+## 9. Nginx 배포 설정
+
+Vite로 빌드한 SPA를 Ubuntu 서버에 배포하는 Nginx 설정이다.
+
+### 정적 파일 서빙 vs 리버스 프록시
+
+| 방식 | 용도 | 예시 |
+|------|------|------|
+| **정적 파일 서빙** | Vite/React SPA | `root /path/to/dist` |
+| **리버스 프록시** | Next.js/Express | `proxy_pass http://127.0.0.1:3000` |
+
+이 타이머 앱은 Vite SPA이므로 Nginx가 직접 빌드 결과물(`dist/`)을 서빙한다.
+
+### Nginx 설정 파일
+
+```nginx showLineNumbers title="/etc/nginx/sites-available/cupstacking.conf"
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name cupstacking.funq.kr;
+
+    # 빌드 결과물 경로
+    root /home/funq/dev/cupstacking-timer/dist;
+    index index.html;
+
+    # SPA 라우팅: 모든 경로를 index.html로
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 정적 에셋 캐싱 (1년)
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Gzip 압축
+    gzip on;
+    gzip_types
+        text/plain
+        text/css
+        application/json
+        application/javascript
+        text/xml
+        application/xml
+        text/javascript;
+
+    # SSL 인증서 (Let's Encrypt)
+    ssl_certificate /etc/letsencrypt/live/cupstacking.funq.kr/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/cupstacking.funq.kr/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+# HTTP → HTTPS 리다이렉트
+server {
+    listen 80;
+    listen [::]:80;
+    server_name cupstacking.funq.kr;
+
+    return 301 https://$host$request_uri;
+}
+```
+
+### 핵심 설정 설명
+
+#### try_files (SPA 라우팅)
+
+```nginx
+try_files $uri $uri/ /index.html;
+```
+
+| 요청 | Nginx 동작 |
+|------|-----------|
+| `/` | `dist/index.html` 전달 |
+| `/assets/index.js` | 해당 파일 전달 |
+| `/timer/3-6-3` | 파일 없음 → `index.html` 전달 → React Router가 처리 |
+
+SPA는 클라이언트 라우팅을 사용하므로, 존재하지 않는 경로도 `index.html`을 반환해야 한다.
+
+#### 정적 에셋 캐싱
+
+```nginx
+location ~* \.(js|css|png)$ {
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+}
+```
+
+Vite 빌드 시 파일명에 해시가 포함됨 (`index-abc123.js`). 내용이 바뀌면 해시도 바뀌므로 1년 캐싱해도 안전하다.
+
+#### Gzip 압축
+
+```nginx
+gzip on;
+gzip_types text/css application/javascript;
+```
+
+100KB JavaScript → 약 30KB로 압축. 모바일 환경에서 로딩 속도 개선.
+
+### 배포 명령
+
+```bash
+# 1. 빌드
+npm run build
+
+# 2. 서버에 업로드 (또는 git pull)
+rsync -avz dist/ funq@server:/home/funq/dev/cupstacking-timer/dist/
+
+# 3. Nginx 설정 테스트 및 재시작
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### Let's Encrypt SSL 인증서 발급
+
+```bash
+# Certbot 설치
+sudo apt install certbot python3-certbot-nginx
+
+# 인증서 발급 (Nginx 설정 자동 수정)
+sudo certbot --nginx -d cupstacking.funq.kr
+
+# 자동 갱신 확인
+sudo certbot renew --dry-run
+```
+
+---
+
+## 정리
+
+| 기술 | 적용 |
+|------|------|
+| `requestAnimationFrame` | 드리프트 없는 타이머 |
+| `useRef` | 터치 중복 방지, 시작 시간 저장 |
+| LocalStorage 훅 | 플레이어/기록 영구 저장 |
+| TypeScript Literal Types | 종목 타입 안전성 |
+| Vite PWA | 오프라인 지원, 앱 설치 |
+| CSS `min()` | 반응형 폰트 크기 |
+| Nginx + Let's Encrypt | SPA 정적 서빙, HTTPS |
+
+아이가 이제 태블릿을 탭해서 타이머를 시작하고, 기록을 보며 자기 실력이 느는 걸 확인한다. 단순한 앱이지만, PWA 덕분에 네이티브 앱 못지않은 사용 경험을 제공할 수 있었다.
