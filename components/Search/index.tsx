@@ -120,13 +120,13 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
 
             {isOpen && createPortal(
                 <div
-                    className="fixed inset-0 z-[9999] flex items-start justify-center pt-[8vh] sm:pt-[15vh] px-3 sm:px-4"
+                    className="fixed inset-0 z-[9999] flex items-start justify-center pt-[10vh] sm:pt-[15vh] px-4 sm:px-6"
                     onClick={(e) => {
                         if (e.target === e.currentTarget) closeModal();
                     }}
                 >
                     <div className="fixed inset-0 bg-dark/70 dark:bg-dark/85 z-[9998]" />
-                    <div className="relative z-[9999] w-full max-w-lg bg-light dark:bg-[#1a1a1a] rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-dark/5 dark:border-light/5">
+                    <div className="relative z-[9999] w-full max-w-[calc(100%-2rem)] sm:max-w-lg bg-light dark:bg-[#1a1a1a] rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-dark/5 dark:border-light/5">
                         {/* 검색 입력 영역 */}
                         <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4">
                             <SearchIcon className="w-5 h-5 text-accent dark:text-accentDark flex-shrink-0" />
