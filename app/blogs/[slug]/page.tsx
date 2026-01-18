@@ -5,6 +5,7 @@ import Comments from "@/components/Comments";
 import { allBlogs } from "contentlayer/generated";
 import { slug } from "github-slugger";
 import Image from "next/image";
+import { notFound } from "next/navigation";
 import siteMetaData from "@/utils/siteMetaData";
 
 export async function generateStaticParams() {
@@ -70,7 +71,7 @@ export default function BlogPage({ params }: { params: { slug: string } }) {
     const blog = allBlogs.find((blog) => blog._raw.flattenedPath === params.slug);
 
     if (!blog) {
-        return <div>블로그 게시물을 찾을 수 없습니다.</div>;
+        notFound();
     }
 
     const publishedTime = new Date(blog.publishedAt).toISOString();
