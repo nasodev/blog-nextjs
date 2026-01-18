@@ -5,7 +5,7 @@ import Fuse from "fuse.js";
 import Link from "next/link";
 import Image from "next/image";
 import { allBlogs, Blog } from "contentlayer/generated";
-import { SearchIcon, CloseIcon } from "@/components/icons";
+import { SearchIcon } from "@/components/icons";
 
 const fuseOptions = {
     keys: ["title", "description", "tags"],
@@ -27,17 +27,18 @@ export default function Search() {
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<SearchResult[]>([]);
+    const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
-    const modalRef = useRef<HTMLDivElement>(null);
 
     const handleSearch = useCallback((searchQuery: string) => {
         setQuery(searchQuery);
+        setSelectedIndex(0);
         if (searchQuery.trim() === "") {
             setResults([]);
             return;
         }
         const searchResults = fuse.search(searchQuery);
-        setResults(searchResults.slice(0, 5));
+        setResults(searchResults.slice(0, 6));
     }, []);
 
     const openModal = useCallback(() => {
@@ -49,6 +50,7 @@ export default function Search() {
         setIsOpen(false);
         setQuery("");
         setResults([]);
+        setSelectedIndex(0);
     }, []);
 
     useEffect(() => {
@@ -64,11 +66,27 @@ export default function Search() {
             if (e.key === "Escape" && isOpen) {
                 closeModal();
             }
+            if (e.key === "ArrowDown" && isOpen && results.length > 0) {
+                e.preventDefault();
+                setSelectedIndex((prev) => (prev + 1) % results.length);
+            }
+            if (e.key === "ArrowUp" && isOpen && results.length > 0) {
+                e.preventDefault();
+                setSelectedIndex((prev) => (prev - 1 + results.length) % results.length);
+            }
+            if (e.key === "Enter" && isOpen && results.length > 0) {
+                e.preventDefault();
+                const selectedResult = results[selectedIndex];
+                if (selectedResult) {
+                    window.location.href = selectedResult.item.url;
+                    closeModal();
+                }
+            }
         };
 
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [isOpen, openModal, closeModal]);
+    }, [isOpen, openModal, closeModal, results, selectedIndex]);
 
     useEffect(() => {
         if (isOpen) {
@@ -93,72 +111,70 @@ export default function Search() {
 
             {isOpen && (
                 <div
-                    className="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh] px-4"
+                    className="fixed inset-0 z-[100] flex items-start justify-center pt-[8vh] sm:pt-[15vh] px-3 sm:px-4"
                     onClick={(e) => {
                         if (e.target === e.currentTarget) closeModal();
                     }}
                 >
-                    <div className="fixed inset-0 bg-dark/50 dark:bg-dark/70" />
-                    <div
-                        ref={modalRef}
-                        className="relative w-full max-w-xl bg-light dark:bg-dark border border-dark/10 dark:border-light/10 rounded-xl shadow-2xl"
-                    >
-                        <div className="flex items-center px-4 border-b border-dark/10 dark:border-light/10">
-                            <SearchIcon className="w-5 h-5 text-gray dark:text-light/60" />
+                    <div className="fixed inset-0 bg-dark/60 dark:bg-dark/80 backdrop-blur-sm" />
+                    <div className="relative w-full max-w-lg bg-light dark:bg-[#1a1a1a] rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-dark/5 dark:border-light/5">
+                        {/* 검색 입력 영역 */}
+                        <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4">
+                            <SearchIcon className="w-5 h-5 text-accent dark:text-accentDark flex-shrink-0" />
                             <input
                                 ref={inputRef}
                                 type="text"
                                 value={query}
                                 onChange={(e) => handleSearch(e.target.value)}
                                 placeholder="검색어를 입력하세요..."
-                                className="flex-1 px-3 py-4 bg-transparent text-dark dark:text-light placeholder:text-gray outline-none"
+                                className="flex-1 bg-transparent text-dark dark:text-light text-base sm:text-lg placeholder:text-gray/60 outline-none"
                             />
-                            <div className="flex items-center gap-2">
-                                <kbd className="hidden sm:inline-block px-2 py-1 text-xs text-gray bg-dark/5 dark:bg-light/10 rounded">
-                                    ESC
-                                </kbd>
-                                <button
-                                    onClick={closeModal}
-                                    className="p-1 hover:bg-dark/5 dark:hover:bg-light/10 rounded"
-                                >
-                                    <CloseIcon className="w-5 h-5 text-gray dark:text-light/60" />
-                                </button>
-                            </div>
                         </div>
 
-                        <div className="max-h-[60vh] overflow-y-auto">
+                        {/* 검색 결과 영역 */}
+                        <div className="max-h-[45vh] sm:max-h-[50vh] overflow-y-auto border-t border-dark/5 dark:border-light/5">
                             {query && results.length === 0 && (
-                                <div className="p-8 text-center text-gray">
-                                    검색 결과가 없습니다.
+                                <div className="py-12 text-center text-gray">
+                                    <p className="text-lg">검색 결과가 없습니다</p>
+                                    <p className="text-sm mt-1 text-gray/60">다른 키워드로 검색해보세요</p>
                                 </div>
                             )}
 
                             {results.length > 0 && (
-                                <ul className="p-2">
-                                    {results.map(({ item }) => (
+                                <ul className="py-1 sm:py-2">
+                                    {results.map(({ item }, index) => (
                                         <li key={item._id}>
                                             <Link
                                                 href={item.url}
                                                 onClick={closeModal}
-                                                className="flex items-center gap-4 p-3 rounded-lg hover:bg-dark/5 dark:hover:bg-light/10 transition-colors"
+                                                className={`flex items-center gap-3 sm:gap-4 px-3 sm:px-5 py-2 sm:py-3 transition-colors ${
+                                                    index === selectedIndex
+                                                        ? "bg-accent/10 dark:bg-accentDark/10"
+                                                        : "hover:bg-dark/5 dark:hover:bg-light/5"
+                                                }`}
                                             >
                                                 {item.image && (
                                                     <Image
                                                         src={item.image.filePath.replace("../public", "")}
                                                         alt={item.title}
-                                                        width={60}
-                                                        height={40}
-                                                        className="rounded object-cover aspect-video"
+                                                        width={48}
+                                                        height={48}
+                                                        className="rounded-lg object-cover w-10 h-10 sm:w-14 sm:h-14 flex-shrink-0"
                                                     />
                                                 )}
                                                 <div className="flex-1 min-w-0">
-                                                    <h3 className="font-medium text-dark dark:text-light truncate">
+                                                    <h3 className="font-medium text-dark dark:text-light truncate text-sm sm:text-base">
                                                         {item.title}
                                                     </h3>
-                                                    <p className="text-sm text-gray truncate">
+                                                    <p className="text-xs sm:text-sm text-gray/80 truncate mt-0.5">
                                                         {item.description}
                                                     </p>
                                                 </div>
+                                                {index === selectedIndex && (
+                                                    <span className="text-xs text-accent dark:text-accentDark flex-shrink-0 hidden sm:block">
+                                                        Enter ↵
+                                                    </span>
+                                                )}
                                             </Link>
                                         </li>
                                     ))}
@@ -166,20 +182,27 @@ export default function Search() {
                             )}
 
                             {!query && (
-                                <div className="p-8 text-center text-gray">
-                                    <p className="mb-2">블로그 글을 검색하세요</p>
-                                    <p className="text-sm">
-                                        <kbd className="px-2 py-1 text-xs bg-dark/5 dark:bg-light/10 rounded">
-                                            Ctrl
-                                        </kbd>
-                                        {" + "}
-                                        <kbd className="px-2 py-1 text-xs bg-dark/5 dark:bg-light/10 rounded">
-                                            K
-                                        </kbd>
-                                        {" 로 언제든 검색창을 열 수 있습니다"}
-                                    </p>
+                                <div className="py-8 sm:py-12 text-center">
+                                    <p className="text-gray/80 text-sm sm:text-base">블로그 글을 검색하세요</p>
                                 </div>
                             )}
+                        </div>
+
+                        {/* 하단 단축키 안내 */}
+                        <div className="flex items-center justify-center gap-3 sm:gap-6 px-3 sm:px-5 py-2 sm:py-3 border-t border-dark/5 dark:border-light/5 bg-dark/[0.02] dark:bg-light/[0.02]">
+                            <span className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs text-gray/60">
+                                <kbd className="px-1 sm:px-1.5 py-0.5 bg-dark/5 dark:bg-light/10 rounded text-gray/80">↑</kbd>
+                                <kbd className="px-1 sm:px-1.5 py-0.5 bg-dark/5 dark:bg-light/10 rounded text-gray/80">↓</kbd>
+                                <span>이동</span>
+                            </span>
+                            <span className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs text-gray/60">
+                                <kbd className="px-1 sm:px-1.5 py-0.5 bg-dark/5 dark:bg-light/10 rounded text-gray/80">Enter</kbd>
+                                <span>선택</span>
+                            </span>
+                            <span className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs text-gray/60">
+                                <kbd className="px-1 sm:px-1.5 py-0.5 bg-dark/5 dark:bg-light/10 rounded text-gray/80">ESC</kbd>
+                                <span>닫기</span>
+                            </span>
                         </div>
                     </div>
                 </div>
