@@ -64,6 +64,7 @@ const Header = () => {
                 <Link href="/contact" className="mx-2">
                     Contact
                 </Link>
+                <Search />
                 <button
                     onClick={() => setTheme(theme === "light" ? "dark" : "light")}
                     className={`w-6 h-6 ease ml-2 flex items-center justify-center rounded-full p-1 ${
@@ -74,7 +75,6 @@ const Header = () => {
                 </button>
             </nav>
             <div className="sm:flex items-center hidden">
-                <Search />
                 <Link href={siteMetaData.github} className="inline-block w-6 h-6 mr-4">
                     <GithubIcon className="hover:scale-125 transition-all ease duration-200 dark:fill-light" />
                 </Link>
