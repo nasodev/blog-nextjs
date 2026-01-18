@@ -126,7 +126,7 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
                     }}
                 >
                     <div className="fixed inset-0 bg-dark/70 dark:bg-dark/85 z-[9998]" />
-                    <div className="relative z-[9999] mx-4 sm:mx-auto w-[calc(100vw-2rem)] sm:w-full sm:max-w-lg bg-light dark:bg-[#1a1a1a] rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-dark/5 dark:border-light/5">
+                    <div className="relative z-[9999] w-[calc(100vw-2rem)] sm:w-full sm:max-w-lg bg-light dark:bg-[#1a1a1a] rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-dark/5 dark:border-light/5">
                         {/* 검색 입력 영역 */}
                         <div className="flex items-center gap-2 px-3 sm:px-5 py-3 sm:py-4">
                             <SearchIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent dark:text-accentDark flex-shrink-0" />
