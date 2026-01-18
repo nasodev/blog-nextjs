@@ -1,20 +1,14 @@
 import HomeCoverSection from "@/components/Home/HomeCoverSection";
 import FeaturePosts from "@/components/Home/FeaturePosts";
-import { allBlogs, Blog } from "contentlayer/generated";
-import RecentPosts from "@/components/Home/RecentPosts";
+import { allBlogs } from "contentlayer/generated";
+import AllPostsSection from "@/components/Home/AllPostsSection";
 
 export default function Home() {
-    console.log(allBlogs);
-    // const posts = allBlogs.sort((a, b) =>
-    //   compareDesc(new Date(a.date), new Date(b.date))
-    // );
-
     return (
-        // <></>
         <main className="flex flex-col items-center justify-center">
             <HomeCoverSection blogs={allBlogs} />
             <FeaturePosts blogs={allBlogs} />
-            <RecentPosts blogs={allBlogs} />
+            <AllPostsSection blogs={allBlogs} />
         </main>
     );
 }
