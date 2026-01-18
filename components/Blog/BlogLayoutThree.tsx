@@ -7,23 +7,24 @@ import TagList from "@/components/Elements/TagList";
 const BlogLayoutThree = ({ blog }: BlogProp) => {
     return (
         <div className="group flex flex-col items-center text-dark dark:text-light">
-            <Link href={blog.url} className="h-full rounded-xl overflow-hidden">
-                <Image
-                    src={blog.image.filePath.replace("../public", "")}
-                    placeholder="blur"
-                    blurDataURL={blog.image.blurhashDataUrl}
-                    alt={blog.title}
-                    width={blog.image.width}
-                    height={blog.image.height}
-                    className="aspect-[4/3] w-full h-full object-cover object-center group-hover:scale-105 transition-all ease duration-300"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                />
+            <Link href={blog.url} className="w-full rounded-xl overflow-hidden">
+                <div className="relative w-full aspect-[4/3]">
+                    <Image
+                        src={blog.image.filePath.replace("../public", "")}
+                        placeholder="blur"
+                        blurDataURL={blog.image.blurhashDataUrl}
+                        alt={blog.title}
+                        fill
+                        className="object-cover object-center group-hover:scale-105 transition-all ease duration-300"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
+                </div>
             </Link>
 
             <div className="flex flex-col w-full mt-4">
                 {blog.tags && blog.tags.length > 0 && (
                     <div className="mb-2">
-                        <TagList tags={blog.tags} maxDisplay={3} />
+                        <TagList tags={blog.tags} maxDisplay={8} />
                     </div>
                 )}
                 <Link href={blog.url} className="inline-block my-1">
