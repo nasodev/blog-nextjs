@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from "react";
+import { createPortal } from "react-dom";
 import Fuse from "fuse.js";
 import Link from "next/link";
 import Image from "next/image";
@@ -117,7 +118,7 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
                 <SearchIcon className="w-5 h-5 dark:stroke-light" />
             </button>
 
-            {isOpen && (
+            {isOpen && createPortal(
                 <div
                     className="fixed inset-0 z-[9999] flex items-start justify-center pt-[8vh] sm:pt-[15vh] px-3 sm:px-4"
                     onClick={(e) => {
@@ -222,7 +223,8 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
                             </span>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </>
     );
