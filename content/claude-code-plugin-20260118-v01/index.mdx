@@ -1,0 +1,376 @@
+---
+title: "Claude Code 플러그인 만들기: Git 워크플로우 자동화"
+description: "나만의 Marketplace를 만들고, 슬래시 커맨드로 Git 작업을 자동화하는 Claude Code 플러그인 개발"
+image: "../../public/blog-cover/claude-code-plugin-20260118-v01.jpg"
+publishedAt: "2026-01-18 12:00:00"
+updatedAt: "2026-01-18 16:00:00"
+author: "fundev"
+isPublished: true
+tags:
+  - claude-code
+  - plugin
+  - git
+  - automation
+  - devtools
+---
+
+Git 작업을 효율적으로 하고 싶었다.
+
+처음엔 쉘 스크립트를 만들고, 그 스크립트를 실행하라는 프롬프트를 `.md` 파일로 만들어뒀다. Claude Code에 붙여넣으면 스크립트가 실행되고, 결과도 잘 나왔다.
+
+Cursor 같은 IDE에서는 분할된 터미널 창에 프롬프트를 붙여넣기 편했는데, 요즘 쓰는 Warp는 터미널 기반에 에디터가 붙는 형식이라 프롬프트 파일을 붙여넣기가 불편했다. 슬래시 커맨드로 바꾸면 이 문제도 해결될 것 같았다.
+
+하는 김에 Git 관련 작업을 전부 커맨드로 만드는게 좋겠다고 생각했다. 브랜치 생성, 커밋, 푸시, PR, 머지까지. 워크플로우 전체를 자동화해두면 나중에 편할 것 같았다.
+
+그런데 커맨드가 7개가 되니까 관리가 힘들어졌다. 프로젝트마다 복사하기도 번거롭고.
+
+그래서 플러그인으로 만들었다.
+
+---
+
+## 완성된 결과물
+
+```bash
+# Marketplace 추가
+/plugin marketplace add nasodev/nasodev-marketplace
+
+# 플러그인 설치
+/plugin install git-workflow@nasodev-marketplace
+```
+
+설치하면 7개의 슬래시 커맨드가 생긴다:
+
+| 커맨드 | 설명 |
+|--------|------|
+| `/git:0.check` | Git 상태 및 설정 확인 |
+| `/git:1.branch` | 새 브랜치 생성 |
+| `/git:2.sync` | main 브랜치 동기화 |
+| `/git:3.commit` | 변경사항 커밋 |
+| `/git:4.push` | Remote에 Push |
+| `/git:5.pr` | Pull Request 생성 |
+| `/git:6.merge` | Main에 머지 |
+
+워크플로우 순서대로 번호를 붙여서, 뭘 먼저 해야 하는지 헷갈리지 않게 했다.
+
+---
+
+## 왜 플러그인인가?
+
+처음엔 프로젝트 `.claude/commands/`에 커맨드 파일만 넣어서 썼다.
+
+```
+.claude/commands/
+├── git-branch.md
+├── git-commit.md
+└── git-push.md
+```
+
+잘 동작했지만 문제가 있었다:
+
+1. **프로젝트마다 복사해야 함** - 새 프로젝트 시작할 때마다 파일 복사
+2. **업데이트가 번거로움** - 스크립트 수정하면 모든 프로젝트에 다시 복사
+3. **버전 관리 안 됨** - 어떤 프로젝트에 어떤 버전이 있는지 모름
+
+플러그인으로 만들면:
+
+```bash
+# 한 번만 설치하면 모든 프로젝트에서 사용
+/plugin install git-workflow@nasodev-marketplace
+
+# 업데이트도 한 줄
+/plugin update git-workflow@nasodev-marketplace
+```
+
+---
+
+## 플러그인 구조
+
+Claude Code 플러그인은 생각보다 단순하다.
+
+```
+claude-git-workflow/
+├── .claude-plugin/
+│   └── plugin.json          # 플러그인 메타데이터
+├── commands/
+│   ├── git:0.check.md       # 슬래시 커맨드 정의
+│   ├── git:1.branch.md
+│   └── ...
+├── scripts/
+│   ├── git-check.sh         # 실제 실행될 스크립트
+│   ├── git-branch.sh
+│   └── ...
+└── README.md
+```
+
+### plugin.json
+
+```json
+{
+  "name": "git-workflow",
+  "description": "Git workflow automation with interactive scripts",
+  "version": "1.3.0",
+  "author": {
+    "name": "nasodev",
+    "email": "creationand2017@gmail.com"
+  },
+  "repository": "https://github.com/nasodev/claude-git-workflow",
+  "license": "MIT"
+}
+```
+
+### 커맨드 파일 (git:0.check.md)
+
+```markdown
+---
+name: git:0.check
+description: "Git 상태 확인 (isolated fork)"
+context: fork
+allowed-tools: [Bash]
+model: haiku
+---
+
+# Git 상태 및 설정 확인
+
+현재 저장소의 브랜치, 사용자 설정, 작업 상태를 확인한다.
+
+---
+
+**반드시 Bash tool로 아래 스크립트를 실행해라. 다른 방법은 허용하지 않는다.**
+
+\`\`\`bash
+./scripts/git-check.sh
+\`\`\`
+```
+
+핵심 두 가지:
+
+1. **Frontmatter**: `context: fork`와 함께 `name`, `allowed-tools`, `model` 필드가 있어야 격리 실행됨
+2. **명시적 지시**: "반드시 Bash tool로 스크립트를 실행해라" - 이게 없으면 Claude가 스크립트를 실행하지 않고 설명만 할 때가 있다
+
+---
+
+## Marketplace가 필요한 이유
+
+플러그인을 만들었는데, 어떻게 배포하지?
+
+Claude Code는 **Marketplace 기반** 플러그인 시스템이다.
+
+```bash
+# 이렇게 직접 설치 불가
+/plugin install nasodev/claude-git-workflow  # 에러
+```
+
+Marketplace를 통해서만 설치할 수 있다:
+
+```bash
+# 1. Marketplace 등록
+/plugin marketplace add nasodev/nasodev-marketplace
+
+# 2. 그 다음에 설치 가능
+/plugin install git-workflow@nasodev-marketplace
+```
+
+### Marketplace 구조
+
+Marketplace도 하나의 GitHub 리포지토리다:
+
+```
+nasodev-marketplace/
+├── .claude-plugin/
+│   └── marketplace.json     # 플러그인 목록
+├── README.md
+└── LICENSE
+```
+
+### marketplace.json
+
+```json
+{
+  "name": "nasodev-marketplace",
+  "owner": {
+    "name": "nasodev",
+    "email": "creationand2017@gmail.com"
+  },
+  "metadata": {
+    "description": "Claude Code plugins by nasodev",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "git-workflow",
+      "description": "Git workflow automation with interactive scripts",
+      "version": "1.3.0",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/nasodev/claude-git-workflow.git"
+      }
+    }
+  ]
+}
+```
+
+`plugins` 배열에 플러그인을 추가하면, 사용자가 설치할 수 있게 된다.
+
+---
+
+## 스크립트 하이라이트
+
+### git-check.sh - 현재 상태 한눈에
+
+```bash
+./scripts/git-check.sh
+```
+
+실행하면 이런 정보가 나온다:
+
+- **Repository**: 이름, 경로, Remote URL
+- **Branch**: 현재 브랜치, 기본 브랜치, ahead/behind
+- **User Configuration**: Local, Global, Effective 설정
+- **Working Directory**: Staged, Unstaged, Untracked 파일 수
+- **Recent Commits**: 최근 5개 커밋
+
+특히 **Local vs Global** 사용자 설정을 같이 보여줘서, "이 커밋 누구 이름으로 올라가지?" 하는 혼란을 방지한다.
+
+### git-push.sh - 멀티 언어 린트 지원
+
+Push 전에 린트 체크를 자동으로 한다:
+
+```bash
+# 프로젝트 타입 자동 감지
+if [ -f "package.json" ]; then
+    npm run lint
+elif [ -f "pyproject.toml" ]; then
+    ruff check .  # 또는 pylint
+elif [ -f "go.mod" ]; then
+    go vet ./...
+elif [ -f "Cargo.toml" ]; then
+    cargo clippy
+fi
+```
+
+Node.js, Python, Go, Rust, Java 프로젝트를 자동 감지해서 적절한 린터를 실행한다.
+
+### git-branch.sh - 안전한 브랜치 생성
+
+```bash
+# 변경사항이 있으면 자동 stash
+git stash push -m "Auto stash before branch switch"
+
+# 브랜치 생성
+git checkout -b feature/new-feature
+
+# stash 복원
+git stash pop
+```
+
+작업 중인 변경사항이 있어도 안전하게 브랜치를 전환한다.
+
+---
+
+## Context 격리: context: fork
+
+커맨드를 여러 번 실행하다 보니 문제가 생겼다. `/git:0.check` 실행하고, `/git:3.commit` 실행하면 이전 대화 컨텍스트가 계속 쌓인다. 토큰도 낭비되고, 가끔 이전 결과를 참조해서 엉뚱한 동작을 하기도 했다.
+
+`context: fork`를 쓰면 커맨드가 **격리된 컨텍스트**에서 실행된다:
+
+```yaml
+---
+name: git:0.check
+description: "Git 상태 확인 (isolated fork)"
+context: fork
+allowed-tools: [Bash]
+model: haiku
+---
+```
+
+### 필수 필드
+
+`context: fork`가 동작하려면 몇 가지 필드가 더 필요하다:
+
+| 필드 | 설명 | 예시 |
+|------|------|------|
+| `name` | 커맨드 식별자 | `git:0.check` |
+| `allowed-tools` | 사용 가능한 도구 | `[Bash]` |
+| `model` | 실행할 모델 | `haiku`, `sonnet`, `opus` |
+
+`description`과 `context: fork`만 넣으면 격리가 안 된다. `name`, `allowed-tools`, `model`까지 있어야 "(forked execution)"이 표시되면서 실제로 격리된다.
+
+### 모델 선택
+
+모든 커맨드에 같은 모델을 쓸 필요 없다:
+
+| 모델 | 용도 | 커맨드 |
+|------|------|--------|
+| `haiku` | 단순 스크립트 실행 | 0.check, 1.branch, 2.sync, 4.push, 6.merge |
+| `sonnet` | 메시지 작성 필요 | 3.commit, 5.pr |
+| `opus` | 복잡한 분석/판단 | (이 플러그인에서는 미사용) |
+
+`haiku`는 빠르고 저렴하다. 스크립트 실행만 하면 되는 커맨드에 적합하다.
+
+`sonnet`은 커밋 메시지나 PR 설명을 작성할 때 쓴다. 한글로 의미 있는 메시지를 만들려면 더 좋은 모델이 필요하다.
+
+`opus`는 복잡한 분석이나 판단이 필요할 때 쓴다. 코드 리뷰, 아키텍처 설계 같은 고급 작업에 적합하다.
+
+---
+
+## 설치 테스트
+
+실제로 설치해보자:
+
+```bash
+# 터미널에서
+claude plugin marketplace add nasodev/nasodev-marketplace
+# ✔ Successfully added marketplace: nasodev-marketplace
+
+claude plugin install git-workflow@nasodev-marketplace
+# ✔ Successfully installed plugin: git-workflow@nasodev-marketplace
+
+claude plugin list
+# ❯ git-workflow@nasodev-marketplace
+#   Version: 1.3.0
+#   Scope: user
+#   Status: ✔ enabled
+```
+
+설치 후 Claude Code를 재시작하면, `/git:` 커맨드들을 사용할 수 있다.
+
+### 설치 스코프
+
+플러그인은 3가지 스코프로 설치할 수 있다:
+
+| Scope | 설명 | 사용 사례 |
+|-------|------|----------|
+| `user` | 모든 프로젝트에서 사용 (기본값) | 공통 도구 |
+| `project` | 현재 프로젝트만, git 추적 | 팀 공유 |
+| `local` | 현재 프로젝트만, git 무시 | 개인 설정 |
+
+```bash
+# 글로벌 설치 (기본값)
+claude plugin install git-workflow@nasodev-marketplace
+
+# 프로젝트별 설치
+claude plugin install -s project git-workflow@nasodev-marketplace
+```
+
+기본값이 `user`라서, 한 번 설치하면 어떤 프로젝트에서든 `/git:*` 커맨드를 사용할 수 있다.
+
+---
+
+## GitHub 리포지토리
+
+- **플러그인**: https://github.com/nasodev/claude-git-workflow
+- **Marketplace**: https://github.com/nasodev/nasodev-marketplace
+
+---
+
+## 마무리
+
+Claude Code 플러그인은 생각보다 만들기 쉽다.
+
+1. `commands/` 폴더에 `.md` 파일 만들고
+2. `.claude-plugin/plugin.json` 작성하고
+3. Marketplace 리포지토리 만들어서 등록
+
+이렇게 하면 모든 프로젝트에서 `/my-command` 형태로 사용할 수 있다.
+
+반복되는 워크플로우가 있다면, 플러그인으로 만들어보자.
