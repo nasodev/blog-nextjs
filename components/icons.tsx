@@ -17,7 +17,7 @@ export const SearchIcon = ({ className = "", ...rest }: SvgComponentProps) => (
         strokeLinecap="round"
         strokeLinejoin="round"
         {...rest}
-        className={cx("w-full h-auto", className)}
+        className={className}
     >
         <circle cx={11} cy={11} r={8} />
         <path d="m21 21-4.3-4.3" />
@@ -36,7 +36,7 @@ export const CloseIcon = ({ className = "", ...rest }: SvgComponentProps) => (
         strokeLinecap="round"
         strokeLinejoin="round"
         {...rest}
-        className={cx("w-full h-auto", className)}
+        className={className}
     >
         <path d="M18 6 6 18" />
         <path d="m6 6 12 12" />
