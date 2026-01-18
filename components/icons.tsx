@@ -4,6 +4,44 @@ import { FC, SVGProps } from "react";
 interface SvgComponentProps extends SVGProps<SVGSVGElement> {
     className?: string;
 }
+
+export const SearchIcon = ({ className = "", ...rest }: SvgComponentProps) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width={24}
+        height={24}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...rest}
+        className={cx("w-full h-auto", className)}
+    >
+        <circle cx={11} cy={11} r={8} />
+        <path d="m21 21-4.3-4.3" />
+    </svg>
+);
+
+export const CloseIcon = ({ className = "", ...rest }: SvgComponentProps) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width={24}
+        height={24}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...rest}
+        className={cx("w-full h-auto", className)}
+    >
+        <path d="M18 6 6 18" />
+        <path d="m6 6 12 12" />
+    </svg>
+);
 export const LinkedinIcon = ({ className = "", ...rest }: SvgComponentProps) => (
     <svg
         xmlns="http://www.w3.org/2000/svg"

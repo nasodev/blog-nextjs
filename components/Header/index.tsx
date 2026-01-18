@@ -7,6 +7,7 @@ import Logo from "./Logo";
 import { LinkedinIcon, SunIcon, MoonIcon, XIcon, GithubIcon, InstagramIcon } from "@/components/icons";
 import useThemeSwitch from "@/components/Hook/useThemeSwitch";
 import siteMetaData from "@/utils/siteMetaData";
+import Search from "@/components/Search";
 
 const Header = () => {
     const { theme, setTheme, mounted } = useThemeSwitch();
@@ -73,6 +74,7 @@ const Header = () => {
                 </button>
             </nav>
             <div className="sm:flex items-center hidden">
+                <Search />
                 <Link href={siteMetaData.github} className="inline-block w-6 h-6 mr-4">
                     <GithubIcon className="hover:scale-125 transition-all ease duration-200 dark:fill-light" />
                 </Link>
