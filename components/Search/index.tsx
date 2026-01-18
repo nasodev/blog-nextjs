@@ -128,22 +128,22 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
                     <div className="fixed inset-0 bg-dark/70 dark:bg-dark/85 z-[9998]" />
                     <div className="relative z-[9999] w-full max-w-[calc(100%-2rem)] sm:max-w-lg bg-light dark:bg-[#1a1a1a] rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden border border-dark/5 dark:border-light/5">
                         {/* 검색 입력 영역 */}
-                        <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4">
+                        <div className="flex items-center gap-2 px-3 sm:px-5 py-3 sm:py-4">
                             <SearchIcon className="w-5 h-5 text-accent dark:text-accentDark flex-shrink-0" />
                             <input
                                 ref={inputRef}
                                 type="text"
                                 value={query}
                                 onChange={(e) => handleSearch(e.target.value)}
-                                placeholder="검색어를 입력하세요..."
-                                className="flex-1 bg-transparent text-dark dark:text-light text-base sm:text-lg placeholder:text-gray/60 outline-none"
+                                placeholder="검색..."
+                                className="flex-1 min-w-0 bg-transparent text-dark dark:text-light text-base sm:text-lg placeholder:text-gray/60 outline-none"
                             />
                             <button
                                 onClick={closeModal}
-                                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-dark/10 dark:hover:bg-light/10 transition-colors"
+                                className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full hover:bg-dark/10 dark:hover:bg-light/10 transition-colors"
                                 aria-label="닫기"
                             >
-                                <svg className="w-4 h-4 text-gray" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5 text-gray" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
