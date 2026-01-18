@@ -45,7 +45,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="en">
+        <html lang="ko">
             <body className={cx(inter.variable, manrope.variable, "font-mr bg-light dark:bg-dark")}>
                 <Script id="theme-script">
                     {`if (localStorage.getItem("theme") === "dark" || (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
