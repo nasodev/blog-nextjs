@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from "react";
 import Fuse from "fuse.js";
 import Link from "next/link";
 import Image from "next/image";
 import { allBlogs, Blog } from "contentlayer/generated";
 import { SearchIcon } from "@/components/icons";
+
+export interface SearchHandle {
+    close: () => void;
+}
 
 const fuseOptions = {
     keys: ["title", "description", "tags"],
@@ -23,12 +27,23 @@ interface SearchResult {
     score?: number;
 }
 
-export default function Search() {
+const Search = forwardRef<SearchHandle>((_, ref) => {
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<SearchResult[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    const closeModal = useCallback(() => {
+        setIsOpen(false);
+        setQuery("");
+        setResults([]);
+        setSelectedIndex(0);
+    }, []);
+
+    useImperativeHandle(ref, () => ({
+        close: closeModal
+    }), [closeModal]);
 
     const handleSearch = useCallback((searchQuery: string) => {
         setQuery(searchQuery);
@@ -44,13 +59,6 @@ export default function Search() {
     const openModal = useCallback(() => {
         setIsOpen(true);
         setTimeout(() => inputRef.current?.focus(), 100);
-    }, []);
-
-    const closeModal = useCallback(() => {
-        setIsOpen(false);
-        setQuery("");
-        setResults([]);
-        setSelectedIndex(0);
     }, []);
 
     useEffect(() => {
@@ -209,4 +217,8 @@ export default function Search() {
             )}
         </>
     );
-}
+});
+
+Search.displayName = "Search";
+
+export default Search;

@@ -1,17 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import React from "react";
 import Logo from "./Logo";
 import { LinkedinIcon, SunIcon, MoonIcon, XIcon, GithubIcon, InstagramIcon } from "@/components/icons";
 import useThemeSwitch from "@/components/Hook/useThemeSwitch";
 import siteMetaData from "@/utils/siteMetaData";
-import Search from "@/components/Search";
+import Search, { SearchHandle } from "@/components/Search";
 
 const Header = () => {
     const { theme, setTheme, mounted } = useThemeSwitch();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const searchRef = useRef<SearchHandle>(null);
+
+    const handleMenuToggle = () => {
+        searchRef.current?.close();
+        setIsMenuOpen(!isMenuOpen);
+    };
 
     if (!mounted) {
         return null;
@@ -20,7 +26,7 @@ const Header = () => {
     return (
         <header className="w-full p-4 px-5 sm:px-10 flex items-center justify-between">
             <Logo />
-            <button className="inline-block sm:hidden z-50" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+            <button className="inline-block sm:hidden z-50" onClick={handleMenuToggle}>
                 <div className="w-6 cursor-pointer transition-all ease duration-300">
                     <div className="relative">
                         <span
@@ -64,7 +70,7 @@ const Header = () => {
                 <Link href="/contact" className="mx-2">
                     Contact
                 </Link>
-                <Search />
+                <Search ref={searchRef} />
                 <button
                     onClick={() => setTheme(theme === "light" ? "dark" : "light")}
                     className={`w-6 h-6 ease ml-2 flex items-center justify-center rounded-full p-1 ${
