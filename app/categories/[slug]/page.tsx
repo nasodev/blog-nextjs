@@ -48,7 +48,9 @@ const CategoryPage = ({ params }: { params: { slug: string } }) => {
     });
 
     const blogs = allBlogs.filter((blog) => {
-        if (params.slug === "all" && blog.isPublished) {
+        if (!blog.isPublished) return false;
+
+        if (params.slug === "all") {
             return true;
         }
         return blog.tags?.some((tag) => {
