@@ -1,7 +1,8 @@
-import BlogLayoutThree from "@/components/Blog/BlogLayoutThree";
+import BlogGridInfinite from "@/components/Blog/BlogGridInfinite";
 import Categories from "@/components/Blog/Categories";
 import { allBlogs } from "contentlayer/generated";
 import GithubSlugger, { slug } from "github-slugger";
+import { sortBlogs } from "@/utils";
 
 const slugger = new GithubSlugger();
 
@@ -56,21 +57,20 @@ const CategoryPage = ({ params }: { params: { slug: string } }) => {
         });
     });
 
+    // 날짜순 정렬
+    const sortedBlogs = sortBlogs(blogs);
+
     return (
-        <article className="mt-12 flex flex-col text-dark">
+        <article className="mt-12 flex flex-col text-dark dark:text-light">
             <div className="px-5 sm:px-10 md:px-24 sxl:px-32 flex flex-col">
                 <h1 className="mt-6 font-semibold text-2xl md:text-4xl lg:text-5xl">#{params.slug}</h1>
-                <span className="mt-2 inline-block">Discover more categories and expand your knowledge!</span>
+                <span className="mt-2 inline-block text-gray dark:text-light/70">
+                    {sortedBlogs.length} posts found. Discover more categories and expand your knowledge!
+                </span>
             </div>
             <Categories categories={allCategories} currentSlug={params.slug} />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-rows-2 gap-16 mt-5 sm:mt-10 md:mt-24 sxl:mt-32 px-5 sm:px-10 md:px-24 sxl:px-32">
-                {blogs.map((blog, index) => (
-                    <article className="col-span-1 row-span-1 relative" key={index}>
-                        <BlogLayoutThree blog={blog} />
-                    </article>
-                ))}
-            </div>
+            <BlogGridInfinite blogs={sortedBlogs} itemsPerPage={9} />
         </article>
     );
 };
