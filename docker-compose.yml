@@ -1,0 +1,29 @@
+# 로컬 개발 환경
+services:
+  blog:
+    build:
+      context: .
+      target: development
+    container_name: blog-dev
+    ports:
+      - "23001:3000"
+    env_file:
+      - .env.local
+    volumes:
+      - ./app:/app/app:ro
+      - ./components:/app/components:ro
+      - ./content:/app/content:ro
+      - ./hooks:/app/hooks:ro
+      - ./lib:/app/lib:ro
+      - ./posts:/app/posts:ro
+      - ./public:/app/public:ro
+      - ./types:/app/types:ro
+      - ./utils:/app/utils:ro
+      - ./contentlayer.config.ts:/app/contentlayer.config.ts:ro
+      - ./tailwind.config.ts:/app/tailwind.config.ts:ro
+    networks:
+      - funq-network
+
+networks:
+  funq-network:
+    external: true

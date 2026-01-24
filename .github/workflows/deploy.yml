@@ -4,52 +4,127 @@ on:
   push:
     branches: [ main ]
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
-  build-and-deploy:
+  # Job 1: Lint check
+  lint:
     runs-on: ubuntu-latest
-    env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
+      - name: Run lint
         run: npm run lint
 
-      - name: Build
-        run: npm run build
+  # Job 2: Build and push Docker image
+  build-and-push:
+    needs: lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: runner
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Job 3: Deploy to server
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          port: 2222
+          port: ${{ secrets.SSH_PORT }}
           script: |
-            # 1) nvm 초기화 (npm/pm2 PATH 살리기)
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-            [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
+            set -e
+
             cd /home/funq/dev/blog-nextjs
+
+            # Pull latest code
             git fetch origin main
             git reset --hard origin/main
-            npm ci
-            npm run build
-            # pm2 프로세스가 있으면 reload, 없으면 start
-            if pm2 describe blog >/dev/null 2>&1; then
-              pm2 reload blog --update-env
-            else
-              pm2 start npm --name blog -- run start -- -H 0.0.0.0
+
+            # Login to GHCR
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Pull latest image
+            docker pull ghcr.io/${{ github.repository }}:latest
+
+            # Stop pm2 if running (migration from pm2)
+            if command -v pm2 &> /dev/null && pm2 describe blog &> /dev/null; then
+              pm2 stop blog || true
+              pm2 delete blog || true
             fi
+
+            # Stop existing container
+            docker compose -f docker-compose.prod.yml down || true
+
+            # Start new container
+            docker compose -f docker-compose.prod.yml up -d
+
+            # Wait for health check
+            echo "Waiting for service to be healthy..."
+            sleep 15
+
+            # Verify deployment
+            if curl -sf http://localhost:3000 > /dev/null; then
+              echo "Deployment successful!"
+            else
+              echo "Health check failed!"
+              docker logs blog --tail 50
+              exit 1
+            fi
+
+            # Clean up old images
+            docker image prune -f

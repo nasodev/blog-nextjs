@@ -2,6 +2,7 @@ const { withContentlayer } = require("next-contentlayer2");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    output: "standalone",  // Docker 배포용
     reactStrictMode: true,
     swcMinify: true,
     compiler: {

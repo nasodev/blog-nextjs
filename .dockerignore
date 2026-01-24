@@ -1,0 +1,49 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+.next
+out
+build
+.contentlayer
+
+# Testing
+coverage
+.nyc_output
+tests
+tests-examples
+playwright-report
+test-results
+
+# Development
+.git
+.github
+.vscode
+.claude
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Misc
+.eslintcache
+.yarn

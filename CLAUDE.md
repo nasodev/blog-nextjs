@@ -16,12 +16,38 @@ Next.js 14 기반 기술 블로그 (https://blog.funq.kr)
 
 ## Commands
 
+### Docker (로컬 개발)
+
 ```bash
-npm run dev       # 개발 서버 (localhost:3000)
+# Docker로 실행
+./run-local.sh
+# 또는
+docker compose up --build
+
+# 컨테이너 로그
+docker logs -f blog-dev
+```
+
+### npm (기존 방식)
+
+```bash
+# npm으로 실행
+./run-local.sh npm
+# 또는
+npm run dev -- -p 23001
+
+# 기타 명령어
 npm run build     # 프로덕션 빌드 + sitemap 생성
-npm run start     # 프로덕션 서버 (0.0.0.0:3000, LAN 접근용)
+npm run start     # 프로덕션 서버
 npm run lint      # ESLint
 ```
+
+### 포트 구성
+
+| 환경 | 포트 | URL |
+|------|------|-----|
+| 로컬 개발 | 23001 | http://localhost:23001 |
+| 프로덕션 | 3000 | Nginx → localhost:3000 |
 
 ## Architecture
 
@@ -131,24 +157,52 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
 
 ```
 Ubuntu Server
-├── Next.js (port 3000)
+├── Docker (GHCR 이미지: ghcr.io/nasodev/blog-nextjs)
 ├── Nginx (80/443 → 3000 proxy)
 ├── Let's Encrypt HTTPS
 └── ufw + fail2ban
 ```
 
-### 배포 명령
+### CI/CD
+
+GitHub Actions (`main` 브랜치 push 시 자동 배포):
+1. Lint 검사
+2. Docker 이미지 빌드 → GHCR push
+3. SSH로 서버 배포
+
+### 수동 배포
 
 ```bash
 cd ~/dev/blog-nextjs
-git pull origin main
-npm install
-npm run build
-pm2 restart blog  # 또는 npm run start
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+```
+
+### 서버 초기 설정
+
+```bash
+./deploy/docker-setup.sh
 ```
 
 ## Build Notes
 
 - Contentlayer + MDX 빌드는 메모리 집약적 → Vercel 무료티어(1GB) 빌드 실패로 개인 서버 사용
+- `next.config.js`에 `output: "standalone"` 설정 (Docker 배포용)
 - `next.config.js`에 `outputFileTracingExcludes` 메모리 최적화 설정
 - SSG: `generateStaticParams()`로 빌드 시 모든 블로그 페이지 정적 생성
+
+## Project Structure (Docker 관련)
+
+```
+blog-nextjs/
+├── Dockerfile               # Multi-stage build (deps/builder/runner/development)
+├── docker-compose.yml       # 로컬 개발 환경 (port 23001)
+├── docker-compose.prod.yml  # 프로덕션 환경 (GHCR 이미지)
+├── .dockerignore
+├── run-local.sh             # 로컬 실행 스크립트 (docker/npm)
+├── deploy/
+│   └── docker-setup.sh      # 서버 초기 설정 스크립트
+└── .github/
+    └── workflows/
+        └── deploy.yml       # CI/CD 파이프라인
+```
