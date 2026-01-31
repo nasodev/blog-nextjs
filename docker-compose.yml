@@ -1,14 +1,17 @@
 # 로컬 개발 환경
+name: funq-blog
+
 services:
   blog:
     build:
       context: .
       target: development
-    container_name: blog-dev
     ports:
       - "23001:3000"
+
     env_file:
       - .env.local
+
     volumes:
       - ./app:/app/app:ro
       - ./components:/app/components:ro
@@ -21,9 +24,17 @@ services:
       - ./utils:/app/utils:ro
       - ./contentlayer.config.ts:/app/contentlayer.config.ts:ro
       - ./tailwind.config.ts:/app/tailwind.config.ts:ro
+
+    labels:
+      - "com.funq.project=true"
+      - "com.funq.name=blog"
+
     networks:
       - funq-network
 
+    restart: unless-stopped   # 원하면 추가(다른 프로젝트들과 통일)
+
 networks:
   funq-network:
+    name: funq-network
     external: true
