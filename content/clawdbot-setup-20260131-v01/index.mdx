@@ -1,0 +1,284 @@
+---
+title: "Clawdbot으로 텔레그램에서 AI 에이전트 사용하기"
+description: "Ubuntu 서버에 Clawdbot을 설치하고 텔레그램 봇과 연동하는 방법을 정리합니다. Claude Pro/Max 구독자는 API 키 없이 계정 연동만으로 Opus 4.5 모델을 사용할 수 있습니다."
+image: "../../public/blog-cover/clawdbot-setup-20260131-v01.jpg"
+publishedAt: "2026-01-31 10:00:00"
+updatedAt: "2026-01-31 10:00:00"
+author: "fundev"
+isPublished: true
+tags:
+  - ai
+  - clawdbot
+  - telegram
+  - ubuntu
+  - claude
+---
+
+Clawdbot은 AI LLM을 PC 단위로 확장해서 사용할 수 있게 해주는 게이트웨이다. 텔레그램, WhatsApp, Discord 등 메신저를 통해 언제 어디서든 AI 에이전트와 대화할 수 있다.
+
+---
+
+## Clawdbot이란?
+
+Clawdbot은 메신저와 AI 에이전트를 연결해주는 게이트웨이 서비스다. 서버에 설치하면 텔레그램 등으로 메시지를 보내 AI와 대화할 수 있다.
+
+| 기능 | 설명 |
+|------|------|
+| 멀티 채널 | WhatsApp, Telegram, Discord, iMessage 지원 |
+| 구독 인증 | Claude Pro/Max, ChatGPT/Codex OAuth 연동 |
+| 미디어 지원 | 이미지, 오디오, 문서 송수신 |
+| 음성 메모 | 음성 메시지 자동 텍스트 변환 |
+| 대시보드 | 웹 UI로 설정, 크론잡, 스킬 관리 |
+
+**이름 변경 중**: Claude와 이름이 비슷해서 혼란을 주기 때문에 "moltbot"으로 이름 변경이 진행 중이다. 설치 스크립트 URL도 `molt.bot`으로 변경되었다.
+
+- 공식 사이트: https://clawd.bot/
+
+---
+
+## Claude 구독자 혜택
+
+Claude Pro나 Max 요금제를 사용 중이라면 API 키 없이 계정 연동만으로 무료 토큰을 사용할 수 있다.
+
+| 요금제 | API 키 | 계정 연동 | 사용 가능 모델 |
+|--------|--------|----------|----------------|
+| 무료 | 필요 | 불가 | API 요금제 내 모델 |
+| Pro | 불필요 | 가능 | Sonnet 등 |
+| Max | 불필요 | 가능 | Opus 4.5 포함 |
+
+나는 Max 요금제를 사용 중이라 계정 연동 후 Opus 4.5 모델을 사용했다.
+
+---
+
+## 설치 방법
+
+### 1. 설치 스크립트 실행
+
+Ubuntu 서버에서 한 줄 명령어로 설치한다.
+
+```bash
+curl -fsSL https://molt.bot/install.sh | bash
+```
+
+Node.js 22 이상이 필요하다.
+
+### 2. 온보딩 및 서비스 등록
+
+```bash
+# 온보딩 + systemd 서비스 설치
+clawdbot onboard --install-daemon
+```
+
+### 3. 버전 확인
+
+```bash
+clawdbot --version
+# 예시: 2026.1.24-3
+```
+
+---
+
+## 텔레그램 봇 연동
+
+### 1. 텔레그램 봇 생성
+
+1. 텔레그램에서 @BotFather와 대화
+2. `/newbot` 명령으로 새 봇 생성
+3. 원하는 이름으로 봇 생성 후 토큰 발급
+
+### 2. Clawdbot에 토큰 등록
+
+```bash
+# 텔레그램 채널 연동
+clawdbot channels login
+```
+
+생성된 텔레그램 봇 토큰을 입력한다.
+
+### 3. 페어링 승인
+
+텔레그램 봇에서 `/start` 명령을 보내면 코드가 발급된다. 이 코드를 Clawdbot에 입력해서 페어링을 완료한다.
+
+```bash
+clawdbot pairing approve telegram <페어링코드>
+```
+
+### 4. 연결 확인
+
+```bash
+# 상태 확인
+clawdbot status
+
+# TUI로 테스트
+clawdbot tui
+```
+
+---
+
+## 트러블슈팅: Gateway Connection 문제
+
+### 증상
+
+텔레그램 연동 후 `clawdbot tui`에서 gateway connection이 계속 끊어졌다 붙었다를 반복했다.
+
+```
+gateway disconnected
+gateway connected
+gateway disconnected
+...
+```
+
+`clawdbot status`로 확인하고 `clawdbot gateway stop` / `clawdbot gateway start`로 재시작해도 잠시 되다가 다시 끊어졌다.
+
+### 원인 분석
+
+로그를 확인해보니 텔레그램으로 메시지를 보낼 때 Node.js에서 에러가 발생하고 있었다.
+
+```bash
+journalctl --user -u clawdbot-gateway.service -n 200 --no-pager
+```
+
+에러 내용을 보니 `api.telegram.org`로의 연결이 실패하는 문제였다. 레딧에서 검색해보니 DNS/IPv6 관련 문제로, Node.js가 IPv6 주소를 먼저 시도하다가 타임아웃이 발생하는 케이스였다.
+
+### 해결 방법
+
+`/etc/hosts` 파일에 텔레그램 API 서버의 IPv4 주소를 강제 지정했다.
+
+```bash
+sudo vim /etc/hosts
+```
+
+다음 내용 추가:
+
+```
+149.154.166.110 api.telegram.org
+```
+
+이렇게 하면 DNS 조회를 우회해서 항상 IPv4로 연결된다.
+
+### 원인 상세
+
+| 가능한 원인 | 설명 |
+|------------|------|
+| DNS 해석 실패 | 서버 네트워크 환경에서 DNS 응답이 불안정 |
+| IPv6 우선 선택 | Node.js가 IPv6를 먼저 시도하지만 라우팅 문제로 타임아웃 |
+| 네트워크 정책 | 클라우드/IDC에서 특정 도메인 차단 |
+
+**주의**: IP를 하드코딩하면 텔레그램 인프라 변경 시 다시 문제가 생길 수 있다. 근본적인 해결은 DNS 설정을 수정하거나 Node.js 옵션으로 IPv4를 우선하게 만드는 것이다.
+
+```bash
+# Node.js IPv4 우선 옵션
+NODE_OPTIONS=--dns-result-order=ipv4first
+```
+
+---
+
+## 대시보드 접속
+
+Clawdbot 대시보드는 로컬호스트에서만 접속 가능하다. 원격 서버에 설치한 경우 SSH 터널링으로 접속한다.
+
+### 1. SSH 터널 연결
+
+```bash
+ssh -N -L 18789:127.0.0.1:18789 user@서버IP
+```
+
+### 2. 대시보드 URL 확인
+
+서버에서 다음 명령어로 토큰이 포함된 URL을 확인한다.
+
+```bash
+clawdbot dashboard
+# 출력 예시: http://localhost:18789/?token=baf8...
+```
+
+### 3. 브라우저에서 접속
+
+SSH 터널이 연결된 상태에서 위 URL로 접속하면 대시보드를 볼 수 있다.
+
+대시보드에서는 크론잡, 스킬 설정 등을 편리하게 관리할 수 있다.
+
+---
+
+## 활용 방법
+
+Claude Code의 웹 버전을 사용하면 외부에서 핸드폰으로 개발 명령을 내리고 GitHub와 연동할 수 있다. Clawdbot을 사용하면 비슷한 작업을 로컬 환경에서 할 수 있다.
+
+| 기능 | Claude Code Web | Clawdbot |
+|------|-----------------|----------|
+| 외부 접근 | 가능 | 가능 (텔레그램) |
+| 실행 환경 | Anthropic 서버 | 내 서버 |
+| Docker 관리 | 불가 | 가능 |
+| 서버 모니터링 | 불가 | 가능 |
+| 파일 접근 | 제한적 | 전체 |
+
+텔레그램으로 Docker 컨테이너 상태 확인, 서버 모니터링, 간단한 스크립트 실행 등을 할 수 있다.
+
+---
+
+## 보안 주의사항
+
+Clawdbot은 컴퓨터 자원에 대한 광범위한 접근 권한을 가진다. 보안에 각별히 주의해야 한다.
+
+### 1. 권한 범위
+
+Clawdbot은 설치된 서버의 모든 자원에 접근할 수 있다.
+
+| 위험 요소 | 설명 |
+|----------|------|
+| 파일 접근 | 모든 파일 읽기/쓰기 가능 |
+| 명령 실행 | 시스템 명령어 실행 가능 |
+| 네트워크 | 외부 API 호출 가능 |
+
+잘못된 프롬프트로 원치 않는 이메일 발송이나 결제가 발생할 수 있다.
+
+### 2. 스킬 마켓 주의
+
+아직 검증되지 않은 스킬들이 마켓에 올라올 수 있다.
+
+| 위험 유형 | 설명 |
+|----------|------|
+| 프롬프트 인젝션 | 악성 프롬프트가 숨겨진 스킬 |
+| API 키 탈취 | 스킬을 통해 API 키를 외부로 전송 |
+| 가스라이팅 | LLM을 조작해 민감 정보 유출 |
+
+**권장 사항**:
+- 검증된 스킬만 설치
+- 스킬 소스 코드 확인
+- 중요 서버에는 별도 계정으로 격리 운영
+
+---
+
+## 유용한 명령어
+
+```bash
+# 상태 확인
+clawdbot status
+
+# 게이트웨이 재시작
+clawdbot gateway stop
+clawdbot gateway start
+
+# 환경 점검 및 자동 수리
+clawdbot doctor --repair
+
+# TUI 실행
+clawdbot tui
+
+# 대시보드 URL 확인
+clawdbot dashboard
+
+# 페어링 승인
+clawdbot pairing approve telegram <코드>
+```
+
+---
+
+## 마무리
+
+Clawdbot을 사용하면 텔레그램으로 언제 어디서든 AI 에이전트와 대화하고, 서버 관리 작업을 수행할 수 있다.
+
+많은 개발자들이 사용하고 있어서 업데이트도 빠르게 이루어지고 있다. 다만 보안과 권한 관리에 주의를 기울여야 한다.
+
+- 공식 사이트: https://clawd.bot/
+- 공식 문서: https://docs.clawd.bot
