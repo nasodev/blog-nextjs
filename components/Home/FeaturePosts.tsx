@@ -5,6 +5,7 @@ import BlogLayoutTwo from "../Blog/BlogLayoutTwo";
 
 const FeaturePosts = ({ blogs }: BlogsProp) => {
     const sortedBlogs = sortBlogs(blogs);
+    if (sortedBlogs.length < 4) return null;
     return (
         <section className="w-full mt-16 sm:mt-24 md:mt-32 px-5 sm:px-10 md:px-24 sxl:px-32 flex flex-col items-center justify-center">
             <h2 className="w-full inline-block font-bold capitalize text-2xl md:text-4xl text-dark dark:text-light">

@@ -14,15 +14,13 @@ export default function App() {
     const {
         register,
         handleSubmit,
-        formState: { errors },
     } = useForm<FormInputs>();
     const onSubmit = (data: FormInputs) => console.log(data);
-    console.log(errors);
 
     return (
         <form
             onSubmit={handleSubmit(onSubmit)}
-            className="mt-12 text-base xs:test-lg sm:text-xl font-medium leading-relaxed font-in"
+            className="mt-12 text-base xs:text-lg sm:text-xl font-medium leading-relaxed font-in"
         >
             Hello! My name is{" "}
             <input
@@ -42,7 +40,7 @@ export default function App() {
             <input
                 type="tel"
                 placeholder="your phone"
-                {...register}
+                {...register("phone")}
                 className="outline-none border-0 p-0 mx-2 focus:ring-0 placeholder:text-lg placeholder:text-center border-b border-gray focus:border-gray bg-transparent"
             />
             Here are some details about the project: <br />
