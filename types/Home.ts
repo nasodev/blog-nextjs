@@ -1,9 +1,9 @@
-import { Blog } from "contentlayer/generated";
+import { BlogSummary } from "@/utils/blogData";
 
 export interface BlogsProp {
-    blogs: Blog[];
+    blogs: BlogSummary[];
 }
 
 export interface BlogProp {
-    blog: Blog;
+    blog: BlogSummary;
 }
