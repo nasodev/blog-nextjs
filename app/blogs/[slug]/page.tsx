@@ -7,6 +7,7 @@ import { slug } from "github-slugger";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import siteMetaData from "@/utils/siteMetaData";
+import { toBlogSummary } from "@/utils/blogData";
 
 export async function generateStaticParams() {
     return allBlogs.map((blog) => ({ slug: blog._raw.flattenedPath }));
@@ -126,7 +127,7 @@ export default function BlogPage({ params }: { params: { slug: string } }) {
                         sizes="100vw"
                     />
                 </div>
-                <BlogDetails blog={blog} slug={params.slug} />
+                <BlogDetails blog={toBlogSummary(blog)} slug={params.slug} />
                 <div className="grid grid-cols-12 gap-y-8 lg:gap-8 sxl:gap-16 mt-8 px-5 md:px-10">
                     <div className="col-span-12 md:col-span-3">
                         <details className="border-[1px] border-solid border-dark dark:border-light text-dark dark:text-light rounded-lg p-4 sticky top-6 max-h-[80vh] overflow-hidden overflow-y-auto">

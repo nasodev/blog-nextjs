@@ -3,6 +3,7 @@ import Categories from "@/components/Blog/Categories";
 import { allBlogs } from "contentlayer/generated";
 import GithubSlugger, { slug } from "github-slugger";
 import { sortBlogs } from "@/utils";
+import { toBlogSummary } from "@/utils/blogData";
 
 const slugger = new GithubSlugger();
 
@@ -60,7 +61,7 @@ const CategoryPage = ({ params }: { params: { slug: string } }) => {
     });
 
     // 날짜순 정렬
-    const sortedBlogs = sortBlogs(blogs);
+    const sortedBlogs = sortBlogs(blogs.map(toBlogSummary));
 
     return (
         <article className="mt-12 flex flex-col text-dark dark:text-light">

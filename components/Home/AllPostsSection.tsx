@@ -1,17 +1,15 @@
 "use client";
 
-import { Blog } from "contentlayer/generated";
+import { BlogSummary } from "@/utils/blogData";
 import { sortBlogs } from "@/utils";
 import BlogGridInfinite from "@/components/Blog/BlogGridInfinite";
 
 interface AllPostsSectionProps {
-    blogs: Blog[];
+    blogs: BlogSummary[];
 }
 
 const AllPostsSection = ({ blogs }: AllPostsSectionProps) => {
-    // 발행된 블로그만 필터링하고 정렬
-    const publishedBlogs = blogs.filter((blog) => blog.isPublished);
-    const sortedBlogs = sortBlogs(publishedBlogs);
+    const sortedBlogs = sortBlogs(blogs);
 
     return (
         <section className="w-full mt-16 sm:mt-24 md:mt-32 flex flex-col items-center justify-center">

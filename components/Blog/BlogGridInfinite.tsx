@@ -1,11 +1,11 @@
 "use client";
 
-import { Blog } from "contentlayer/generated";
+import { BlogSummary } from "@/utils/blogData";
 import BlogLayoutThree from "./BlogLayoutThree";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 
 interface BlogGridInfiniteProps {
-    blogs: Blog[];
+    blogs: BlogSummary[];
     itemsPerPage?: number;
 }
 
