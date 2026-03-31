@@ -1,4 +1,3 @@
-"use client";
 import Link from "next/link";
 import { InstagramIcon, GithubIcon, LinkedinIcon, XIcon } from "../icons";
 import siteMetaData from "@/utils/siteMetaData";

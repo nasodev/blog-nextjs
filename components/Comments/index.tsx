@@ -1,7 +1,11 @@
 "use client";
 
-import Giscus from "@giscus/react";
+import dynamic from "next/dynamic";
 import useThemeSwitch from "@/components/Hook/useThemeSwitch";
+
+const Giscus = dynamic(() => import("@giscus/react").then((mod) => mod.default), {
+    loading: () => <div className="h-48 animate-pulse bg-gray/10 rounded-lg" />,
+});
 
 interface CommentsProps {
     slug: string;
