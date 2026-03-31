@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from "react";
 import { createPortal } from "react-dom";
-import Fuse from "fuse.js";
+import type Fuse from "fuse.js";
 import Link from "next/link";
 import Image from "next/image";
-import { allBlogs, Blog } from "contentlayer/generated";
+import { allBlogs } from "contentlayer/generated";
+import { BlogSummary, toBlogSummary } from "@/utils/blogData";
 import { SearchIcon } from "@/components/icons";
 
 export interface SearchHandle {
@@ -18,13 +19,10 @@ const fuseOptions = {
     includeScore: true,
 };
 
-const fuse = new Fuse(
-    allBlogs.filter((blog) => blog.isPublished),
-    fuseOptions
-);
+const searchBlogs = allBlogs.filter((b) => b.isPublished).map(toBlogSummary);
 
 interface SearchResult {
-    item: Blog;
+    item: BlogSummary;
     score?: number;
 }
 
@@ -34,6 +32,7 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
     const [results, setResults] = useState<SearchResult[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
+    const fuseRef = useRef<Fuse<BlogSummary> | null>(null);
 
     const closeModal = useCallback(() => {
         setIsOpen(false);
@@ -53,12 +52,16 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
             setResults([]);
             return;
         }
-        const searchResults = fuse.search(searchQuery);
+        const searchResults = fuseRef.current?.search(searchQuery) ?? [];
         setResults(searchResults.slice(0, 6));
     }, []);
 
-    const openModal = useCallback(() => {
+    const openModal = useCallback(async () => {
         setIsOpen(true);
+        if (!fuseRef.current) {
+            const FuseModule = (await import("fuse.js")).default;
+            fuseRef.current = new FuseModule(searchBlogs, fuseOptions);
+        }
         setTimeout(() => inputRef.current?.focus(), 100);
     }, []);
 
