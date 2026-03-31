@@ -9,6 +9,13 @@ import useThemeSwitch from "@/components/Hook/useThemeSwitch";
 import siteMetaData from "@/utils/siteMetaData";
 import Search, { SearchHandle } from "@/components/Search";
 
+const HAMBURGER_TOP_OPEN = { transform: "rotate(-45deg) translateY(0)" } as const;
+const HAMBURGER_TOP_CLOSED = { transform: "rotate(0deg) translateY(6px)" } as const;
+const HAMBURGER_MID_OPEN = { opacity: 0 } as const;
+const HAMBURGER_MID_CLOSED = { opacity: 1 } as const;
+const HAMBURGER_BOT_OPEN = { transform: "rotate(45deg) translateY(0)" } as const;
+const HAMBURGER_BOT_CLOSED = { transform: "rotate(0deg) translateY(-6px)" } as const;
+
 const Header = () => {
     const { theme, setTheme, mounted } = useThemeSwitch();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -31,25 +38,19 @@ const Header = () => {
                     <div className="relative">
                         <span
                             className="absolute top-0 w-full h-0.5 bg-dark dark:bg-light rounded transition-all duration-200 ease"
-                            style={{
-                                transform: isMenuOpen ? "rotate(-45deg) translateY(0)" : "rotate(0deg) translateY(6px)",
-                            }}
+                            style={isMenuOpen ? HAMBURGER_TOP_OPEN : HAMBURGER_TOP_CLOSED}
                         >
                             &nbsp;
                         </span>
                         <span
                             className="absolute top-0 w-full h-0.5 bg-dark dark:bg-light rounded transition-all duration-200 ease"
-                            style={{
-                                opacity: isMenuOpen ? 0 : 1,
-                            }}
+                            style={isMenuOpen ? HAMBURGER_MID_OPEN : HAMBURGER_MID_CLOSED}
                         >
                             &nbsp;
                         </span>
                         <span
                             className="absolute top-0 w-full h-0.5 bg-dark dark:bg-light rounded transition-all duration-200 ease"
-                            style={{
-                                transform: isMenuOpen ? "rotate(45deg) translateY(0)" : "rotate(0deg) translateY(-6px)",
-                            }}
+                            style={isMenuOpen ? HAMBURGER_BOT_OPEN : HAMBURGER_BOT_CLOSED}
                         >
                             &nbsp;
                         </span>

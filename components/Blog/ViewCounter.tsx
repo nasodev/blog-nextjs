@@ -15,26 +15,12 @@ const ViewCounter: React.FC<ViewCounterProps> = ({ slug, noCount = false, showCo
     const hasIncrementedRef = useRef(false);
 
     useEffect(() => {
-        const incrementView = async () => {
+        const handleViews = async () => {
             try {
-                if (!hasIncrementedRef.current) {
+                if (!noCount && !hasIncrementedRef.current) {
                     await incrementViewCount(slug);
                     hasIncrementedRef.current = true;
                 }
-            } catch (err) {
-                setError("조회수를 업데이트하는 중 오류가 발생했습니다.");
-                console.error(err);
-            }
-        };
-
-        if (!noCount) {
-            incrementView();
-        }
-    }, [slug, noCount]);
-
-    useEffect(() => {
-        const fetchViewCount = async () => {
-            try {
                 const count = await getViewCount(slug);
                 setViews(count);
             } catch (err) {
@@ -43,8 +29,8 @@ const ViewCounter: React.FC<ViewCounterProps> = ({ slug, noCount = false, showCo
             }
         };
 
-        fetchViewCount();
-    }, [slug]);
+        handleViews();
+    }, [slug, noCount]);
 
     if (!showCount) return null;
     if (error) return <div className="text-red-500 text-sm">{error}</div>;
