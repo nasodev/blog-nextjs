@@ -4,6 +4,7 @@ import { allBlogs } from "contentlayer/generated";
 import GithubSlugger, { slug } from "github-slugger";
 import { sortBlogs } from "@/utils";
 import { toBlogSummary } from "@/utils/blogData";
+import siteMetaData from "@/utils/siteMetaData";
 
 const slugger = new GithubSlugger();
 
@@ -27,11 +28,22 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
+    const title = `${params.slug} Blogs`;
+    const description =
+        params.slug === "all"
+            ? "AI와 코딩에 관한 모든 블로그 글 목록"
+            : `${params.slug} 관련 블로그 글 목록`;
+
     return {
-        title: `${params.slug} Blogs`,
-        description: `${params.slug === "all" ? "AI development" : params.slug} Category`,
+        title,
+        description,
         alternates: {
             canonical: `/categories/${params.slug}`,
+        },
+        openGraph: {
+            title: `${title} | ${siteMetaData.title}`,
+            description,
+            url: `${siteMetaData.siteUrl}/categories/${params.slug}`,
         },
     };
 }

@@ -4,6 +4,19 @@ const { withContentlayer } = require("next-contentlayer2");
 const nextConfig = {
     output: "standalone",  // Docker 배포용
     reactStrictMode: true,
+    async headers() {
+        return [
+            {
+                source: "/(.*)",
+                headers: [
+                    { key: "X-Content-Type-Options", value: "nosniff" },
+                    { key: "X-Frame-Options", value: "SAMEORIGIN" },
+                    { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+                    { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+                ],
+            },
+        ];
+    },
     swcMinify: true,
     compiler: {
         removeConsole: process.env.NODE_ENV === "production",

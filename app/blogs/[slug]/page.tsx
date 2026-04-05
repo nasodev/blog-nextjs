@@ -38,6 +38,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     const ogImage = imageList.map((image) => {
         return {
             url: image.includes("http") ? image : siteMetaData.siteUrl + image,
+            width: 1200,
+            height: 630,
         };
     });
 

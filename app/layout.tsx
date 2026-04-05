@@ -29,6 +29,9 @@ export const metadata: Metadata = {
     openGraph: siteMetaData.openGraph,
     alternates: {
         canonical: "/",
+        types: {
+            "application/rss+xml": "/feed.xml",
+        },
     },
     robots: {
         index: true,
