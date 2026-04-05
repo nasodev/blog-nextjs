@@ -27,7 +27,9 @@ export const metadata: Metadata = {
     },
     description: siteMetaData.description,
     openGraph: siteMetaData.openGraph,
-
+    alternates: {
+        canonical: "/",
+    },
     robots: {
         index: true,
         follow: true,

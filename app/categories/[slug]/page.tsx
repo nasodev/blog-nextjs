@@ -30,6 +30,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     return {
         title: `${params.slug} Blogs`,
         description: `${params.slug === "all" ? "AI development" : params.slug} Category`,
+        alternates: {
+            canonical: `/categories/${params.slug}`,
+        },
     };
 }
 

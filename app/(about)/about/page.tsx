@@ -6,6 +6,9 @@ import siteMetaData from "@/utils/siteMetaData";
 export const metadata = {
     title: "About Me",
     description: `About me page of ${siteMetaData.title}`,
+    alternates: {
+        canonical: "/about",
+    },
 };
 
 export default function About() {

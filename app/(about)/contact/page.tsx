@@ -5,6 +5,9 @@ import siteMetaData from "@/utils/siteMetaData";
 export const metadata = {
     title: "Contact Me",
     description: `Contact me through the form or email me at ${siteMetaData.email}`,
+    alternates: {
+        canonical: "/contact",
+    },
 };
 
 export default function Contact() {
