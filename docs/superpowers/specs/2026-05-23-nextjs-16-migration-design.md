@@ -119,8 +119,10 @@ export default async function Page({
 `generateMetadata({ params })`도 동일 패턴으로 async 변환 필요.
 
 **영향 받는 파일**:
-- `app/blogs/[slug]/page.tsx` (page + generateMetadata, 현재 5회 `params.slug` 사용)
-- `app/categories/[slug]/page.tsx` (page + generateMetadata, 현재 4회 `params.slug` 사용)
+- `app/blogs/[slug]/page.tsx` (page + generateMetadata)
+- `app/categories/[slug]/page.tsx` (page + generateMetadata)
+
+**완료 기준**: 두 파일에서 `params.<x>` 직접 접근 패턴이 0건이 되고, 함수 진입부에서 `const { ... } = await params;`로 한 번 비구조화한 뒤 로컬 변수만 사용.
 
 **영향 없음**:
 - `app/page.tsx`, `app/manifest.ts`, `app/layout.tsx`, `app/(about)/**`, `app/feed.xml/route.ts`: dynamic params 없음
@@ -189,8 +191,10 @@ import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 ### 2.7 next.config 변경 형식
 
+아래 스니펫은 **Commit 7 이후 최종 형태**. Commit 6 시점에는 `reactCompiler` 키를 제외한 채로 적용하고, Commit 7에서 `reactCompiler: true`를 추가.
+
 ```ts
-// 목표: next.config.ts
+// 목표: next.config.ts (최종 형태, Commit 7 완료 후)
 import { withContentlayer } from "next-contentlayer2";
 import type { NextConfig } from "next";
 
@@ -283,10 +287,12 @@ npx @next/codemod@latest upgrade latest
 ```
 
 **자동 변경 예상** (package.json):
-- `next`: 14.2.35 → 16.x
+- `next`: 14.2.35 → 16.x (codemod는 최신 16.x 마이너로 점프)
 - `react`, `react-dom`: 18 → 19
 - `@types/react`, `@types/react-dom`: 18 → 19
 - `eslint-config-next`: 13.5.8 → 16.x
+
+**버전 핀**: codemod 후 `next` 버전이 목표 `16.2.6 LTS`가 아니면 `npm install next@16.2.6 --save-exact` 후속 실행으로 핀. `npm outdated next`로 현재 버전 확인 가능.
 
 **자동 변경 예상** (코드):
 - 일부 `params`/`searchParams` 사용처 async 변환 (~80%)
@@ -300,8 +306,10 @@ Codemod가 놓친 부분 수동 수정.
 
 | 파일 | 변경 |
 |---|---|
-| `app/blogs/[slug]/page.tsx` | `params: { slug }` → `params: Promise<{ slug }>`, page를 `async`로, `await params` (page + generateMetadata 2곳, 총 5회 사용 갱신) |
-| `app/categories/[slug]/page.tsx` | 동일 (4회 사용 갱신) |
+| `app/blogs/[slug]/page.tsx` | `params: { slug }` → `params: Promise<{ slug }>`, page를 `async`로, 함수 진입부에서 `const { slug } = await params;`로 비구조화 (page + generateMetadata 2곳) |
+| `app/categories/[slug]/page.tsx` | 동일 (page + generateMetadata 2곳) |
+
+**완료 검증**: `git grep "params\.\w"` 결과가 두 파일에서 0건.
 
 **검증**:
 - `npm run build` 통과 (Webpack 또는 Turbopack)
@@ -405,7 +413,7 @@ Next 15+ 캐싱 기본값 변화 대응.
 |---|---|---|---|
 | Contentlayer2가 Next 16에서 동작 안 함 | 낮음 (호환 확인됨) | **치명** | Commit 4 직후 빌드 검증. 실패 시 `patch-package` 핫픽스, 안 되면 Velite 마이그레이션을 별도 작업으로 분리 |
 | Turbopack + `output: "standalone"` 비호환 | 낮~중 | **치명** (Docker 빌드 차단) | Commit 6 직후 `docker build --target builder` 검증. 실패 시 일시적으로 `--webpack` 빌드로 폴백, standalone 호환 이슈 별도 추적 |
-| `@giscus/react`가 React 19에서 깨짐 | 중 (1년 미업데이트) | 중 (댓글만 영향) | 검증에서 발견 시 `@giscus/web` (vanilla) + 자체 wrapper 교체 |
+| `@giscus/react`가 React 19에서 깨짐 | 중 (1년 미업데이트) | 중 (댓글만 영향) | **Stop-and-report (4.4 항목)**. 인라인으로 처리 시 마이그레이션 범위가 2배로 커지므로, 발견 즉시 사용자에게 보고 후 (a) 별도 PR로 처리하고 본 PR은 댓글 일시 비활성화로 머지, (b) 본 PR에 포함해 진행 중 하나를 결정. |
 | React Compiler 특정 컴포넌트에서 컴파일 실패 | 중 | 낮음 | `eslint-plugin-react-compiler`로 사전 감지, 실패 시 `'use no memo'` 옵트아웃. 주의 대상: `components/Search/index.tsx` (`forwardRef` 사용) |
 | `forwardRef` + React 19 + Compiler 비호환 | 낮음 | 낮음 (검색 기능만) | 컴파일 실패 시 Search 컴포넌트만 `'use no memo'` |
 | feed.xml caching 회귀 (force-static 누락) | 낮음 (Commit 5b로 대응) | 낮음 | Commit 5b로 사전 방지, 검증에서 정적 ○ 마크 확인 |
@@ -445,7 +453,8 @@ Commit 1-3 실패 → 해당 커밋만 revert
 2. 마이그레이션 후 정적 페이지 개수가 줄어듦 (글 누락)
 3. Supabase RPC 호출이 새 클라이언트에서 실패
 4. Docker 빌드(builder/runner stage) 실패
-5. 위험 매트릭스의 "치명" 항목 발생
+5. **`@giscus/react`가 React 19에서 깨지는 것이 확인됨** (4.2 매트릭스의 Giscus 위험 항목)
+6. 위험 매트릭스의 "치명" 항목 발생
 
 ---
 
