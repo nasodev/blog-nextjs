@@ -13,9 +13,9 @@ export async function generateStaticParams() {
     return allBlogs.map((blog) => ({ slug: blog._raw.flattenedPath }));
 }
 
-export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
-    const params = await props.params;
-    const blog = allBlogs.find((blog) => blog._raw.flattenedPath === params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params;
+    const blog = allBlogs.find((blog) => blog._raw.flattenedPath === slug);
 
     if (!blog) {
         return {
@@ -73,9 +73,9 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
     };
 }
 
-export default async function BlogPage(props: { params: Promise<{ slug: string }> }) {
-    const params = await props.params;
-    const blog = allBlogs.find((blog) => blog._raw.flattenedPath === params.slug);
+export default async function BlogPage({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params;
+    const blog = allBlogs.find((blog) => blog._raw.flattenedPath === slug);
 
     if (!blog) {
         notFound();
@@ -133,7 +133,7 @@ export default async function BlogPage(props: { params: Promise<{ slug: string }
                         sizes="100vw"
                     />
                 </div>
-                <BlogDetails blog={toBlogSummary(blog)} slug={params.slug} />
+                <BlogDetails blog={toBlogSummary(blog)} slug={slug} />
                 <div className="grid grid-cols-12 gap-y-8 lg:gap-8 sxl:gap-16 mt-8 px-5 md:px-10">
                     <div className="col-span-12 md:col-span-3">
                         <details className="border-[1px] border-solid border-dark dark:border-light text-dark dark:text-light rounded-lg p-4 sticky top-6 max-h-[80vh] overflow-hidden overflow-y-auto">
@@ -167,7 +167,7 @@ export default async function BlogPage(props: { params: Promise<{ slug: string }
                     <RenderMdx blog={blog} />
                 </div>
                 <div className="px-5 md:px-10">
-                    <Comments slug={params.slug} />
+                    <Comments slug={slug} />
                 </div>
             </article>
         </section>

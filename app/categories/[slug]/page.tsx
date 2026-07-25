@@ -27,30 +27,30 @@ export async function generateStaticParams() {
     return paths;
 }
 
-export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
-    const params = await props.params;
-    const title = `${params.slug} Blogs`;
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params;
+    const title = `${slug} Blogs`;
     const description =
-        params.slug === "all"
+        slug === "all"
             ? "AI와 코딩에 관한 모든 블로그 글 목록"
-            : `${params.slug} 관련 블로그 글 목록`;
+            : `${slug} 관련 블로그 글 목록`;
 
     return {
         title,
         description,
         alternates: {
-            canonical: `/categories/${params.slug}`,
+            canonical: `/categories/${slug}`,
         },
         openGraph: {
             title: `${title} | ${siteMetaData.title}`,
             description,
-            url: `${siteMetaData.siteUrl}/categories/${params.slug}`,
+            url: `${siteMetaData.siteUrl}/categories/${slug}`,
         },
     };
 }
 
-const CategoryPage = async (props: { params: Promise<{ slug: string }> }) => {
-    const params = await props.params;
+const CategoryPage = async ({ params }: { params: Promise<{ slug: string }> }) => {
+    const { slug: categorySlug } = await params;
     const allCategories = ["all"];
 
     // 먼저 모든 태그를 수집
@@ -68,12 +68,12 @@ const CategoryPage = async (props: { params: Promise<{ slug: string }> }) => {
     const blogs = allBlogs.filter((blog) => {
         if (!blog.isPublished) return false;
 
-        if (params.slug === "all") {
+        if (categorySlug === "all") {
             return true;
         }
         return blog.tags?.some((tag) => {
             const slugified = slug(tag);
-            return slugified === params.slug;
+            return slugified === categorySlug;
         });
     });
 
@@ -83,12 +83,12 @@ const CategoryPage = async (props: { params: Promise<{ slug: string }> }) => {
     return (
         <article className="mt-12 flex flex-col text-dark dark:text-light">
             <div className="px-5 sm:px-10 md:px-24 sxl:px-32 flex flex-col">
-                <h1 className="mt-6 font-semibold text-2xl md:text-4xl lg:text-5xl">#{params.slug}</h1>
+                <h1 className="mt-6 font-semibold text-2xl md:text-4xl lg:text-5xl">#{categorySlug}</h1>
                 <span className="mt-2 inline-block text-gray dark:text-light/70">
                     {sortedBlogs.length} posts found. Discover more categories and expand your knowledge!
                 </span>
             </div>
-            <Categories categories={allCategories} currentSlug={params.slug} />
+            <Categories categories={allCategories} currentSlug={categorySlug} />
 
             <BlogGridInfinite blogs={sortedBlogs} itemsPerPage={9} />
         </article>
