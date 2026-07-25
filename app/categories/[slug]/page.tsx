@@ -27,7 +27,8 @@ export async function generateStaticParams() {
     return paths;
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
+    const params = await props.params;
     const title = `${params.slug} Blogs`;
     const description =
         params.slug === "all"
@@ -48,7 +49,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     };
 }
 
-const CategoryPage = ({ params }: { params: { slug: string } }) => {
+const CategoryPage = async (props: { params: Promise<{ slug: string }> }) => {
+    const params = await props.params;
     const allCategories = ["all"];
 
     // 먼저 모든 태그를 수집

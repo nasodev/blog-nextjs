@@ -13,7 +13,8 @@ export async function generateStaticParams() {
     return allBlogs.map((blog) => ({ slug: blog._raw.flattenedPath }));
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
+    const params = await props.params;
     const blog = allBlogs.find((blog) => blog._raw.flattenedPath === params.slug);
 
     if (!blog) {
@@ -72,7 +73,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     };
 }
 
-export default function BlogPage({ params }: { params: { slug: string } }) {
+export default async function BlogPage(props: { params: Promise<{ slug: string }> }) {
+    const params = await props.params;
     const blog = allBlogs.find((blog) => blog._raw.flattenedPath === params.slug);
 
     if (!blog) {
