@@ -1,6 +1,8 @@
 import { allBlogs } from "contentlayer/generated";
 import siteMetaData from "@/utils/siteMetaData";
 
+export const dynamic = 'force-static';
+
 export async function GET() {
     const blogs = allBlogs
         .filter((blog) => blog.isPublished)
