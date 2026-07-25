@@ -8,7 +8,7 @@ interface UseInfiniteScrollOptions<T> {
 interface UseInfiniteScrollReturn<T> {
     displayedItems: T[];
     hasMore: boolean;
-    loadMoreRef: React.RefObject<HTMLDivElement>;
+    loadMoreRef: React.RefObject<HTMLDivElement | null>;
     isLoading: boolean;
 }
 
