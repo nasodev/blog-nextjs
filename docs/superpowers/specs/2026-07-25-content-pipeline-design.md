@@ -129,6 +129,7 @@ toc·reading_time을 서버가 계산하므로 에디터와 스킬은 본문 HTM
 | DELETE | `/blog/posts/{slug}` | 글 삭제 |
 | POST | `/blog/images` | 이미지 업로드 (multipart). 볼륨 저장 후 공개 URL 반환. 크기 제한 10MB, 확장자 화이트리스트(jpg/png/gif/webp/svg) |
 | GET | `/blog/admin/posts` | 비발행 포함 전체 목록 (에디터 목록 화면용) |
+| GET | `/blog/admin/posts/{slug}` | 비발행 포함 글 상세 (에디터 편집 화면용) |
 
 **인증**: 기존 Firebase `get_current_user` 의존성 재사용 + 신규 `get_blog_admin` 의존성 (환경변수 `BLOG_ADMIN_UIDS`의 UID 목록에 포함된 사용자만 통과, 아니면 403).
 
