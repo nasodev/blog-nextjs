@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "contentlayer2 build",
     "dev": "next dev",
+    "prebuild": "contentlayer2 build",
     "build": "next build",
     "postbuild": "next-sitemap",
     "start": "next start -H 0.0.0.0",
