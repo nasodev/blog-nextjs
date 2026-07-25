@@ -38,6 +38,7 @@ const RenderMdx = ({ blog }: BlogProps) => {
         sm:first-letter:text-4xl
         "
         >
+            {/* eslint-disable-next-line react-hooks/static-components -- useMDXComponent (next-contentlayer2) must build the component from blog.body.code per render; it already memoizes internally via useMemo([code, globals]), so this is not an unmemoized component creation. */}
             <MDXContent components={mdxComponent} />
         </div>
     );

@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Next.js 14 기반 기술 블로그 (https://blog.funq.kr)
+Next.js 16 기반 기술 블로그 (https://blog.funq.kr)
 
 | Stack | Technology |
 |-------|------------|
-| Framework | Next.js 14.2.35, React 18, TypeScript |
+| Framework | Next.js 16.2.6, React 19, TypeScript |
 | Content | Contentlayer2, MDX, remark-gfm |
 | Styling | Tailwind CSS, @tailwindcss/typography |
 | Database | Supabase (PostgreSQL) |
@@ -187,9 +187,12 @@ docker compose -f docker-compose.prod.yml up -d
 ## Build Notes
 
 - Contentlayer + MDX 빌드는 메모리 집약적 → Vercel 무료티어(1GB) 빌드 실패로 개인 서버 사용
-- `next.config.js`에 `output: "standalone"` 설정 (Docker 배포용)
-- `next.config.js`에 `outputFileTracingExcludes` 메모리 최적화 설정
+- `next.config.ts`에 `output: "standalone"` 설정 (Docker 배포용)
+- `next.config.ts`에 `outputFileTracingExcludes` 메모리 최적화 설정
 - SSG: `generateStaticParams()`로 빌드 시 모든 블로그 페이지 정적 생성
+- Next 16 + Turbopack에서는 Contentlayer 생성이 `prebuild`/`predev` 스크립트(one-shot)로 실행됨 —
+  dev 서버 실행 중 MDX 파일을 수정한 경우 dev 서버를 재시작해야 반영됨 (임시 제약: 콘텐츠
+  파이프라인 개편에서 Contentlayer 제거 예정)
 
 ## Project Structure (Docker 관련)
 

@@ -8,7 +8,7 @@ interface UseInfiniteScrollOptions<T> {
 interface UseInfiniteScrollReturn<T> {
     displayedItems: T[];
     hasMore: boolean;
-    loadMoreRef: React.RefObject<HTMLDivElement>;
+    loadMoreRef: React.RefObject<HTMLDivElement | null>;
     isLoading: boolean;
 }
 
@@ -19,6 +19,15 @@ export function useInfiniteScroll<T>({
     const [displayCount, setDisplayCount] = useState(itemsPerPage);
     const [isLoading, setIsLoading] = useState(false);
     const loadMoreRef = useRef<HTMLDivElement>(null);
+
+    // items가 바뀌면 displayCount를 리셋한다. effect 대신 렌더링 중
+    // 상태를 조정하는 React 공식 패턴을 사용해 추가 렌더 사이클을 피한다.
+    // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+    const [prevItems, setPrevItems] = useState(items);
+    if (items !== prevItems) {
+        setPrevItems(items);
+        setDisplayCount(itemsPerPage);
+    }
 
     const displayedItems = items.slice(0, displayCount);
     const hasMore = displayCount < items.length;
@@ -55,11 +64,6 @@ export function useInfiniteScroll<T>({
             }
         };
     }, [hasMore, isLoading, loadMore]);
-
-    // items가 변경되면 displayCount 리셋
-    useEffect(() => {
-        setDisplayCount(itemsPerPage);
-    }, [items, itemsPerPage]);
 
     return {
         displayedItems,
