@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { incrementViewCount, getViewCount } from "@/lib/supabase/api/views";
+import { incrementView } from "@/lib/api/views";
 
 interface ViewCounterProps {
     slug: string;
@@ -18,11 +18,10 @@ const ViewCounter: React.FC<ViewCounterProps> = ({ slug, noCount = false, showCo
         const handleViews = async () => {
             try {
                 if (!noCount && !hasIncrementedRef.current) {
-                    await incrementViewCount(slug);
+                    const count = await incrementView(slug);
                     hasIncrementedRef.current = true;
+                    setViews(count);
                 }
-                const count = await getViewCount(slug);
-                setViews(count);
             } catch (err) {
                 setError("조회수를 가져오는 중 오류가 발생했습니다.");
                 console.error(err);

@@ -1,157 +1,104 @@
 import BlogDetails from "@/components/Blog/BlogDetails";
-import RenderMdx from "@/components/Blog/RenderMdx";
+import PostBody from "@/components/Blog/PostBody";
 import Tag from "@/components/Elements/tag";
 import Comments from "@/components/Comments";
-import { allBlogs } from "contentlayer/generated";
-import { slug } from "github-slugger";
+import { slug as slugify } from "github-slugger";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import siteMetaData from "@/utils/siteMetaData";
-import { BlogSummary } from "@/utils/blogData";
+import { getPost, getPublishedPosts, resolveImageUrl } from "@/lib/api/posts";
+import { toBlogSummary } from "@/utils/blogData";
 
 export async function generateStaticParams() {
-    return allBlogs.map((blog) => ({ slug: blog._raw.flattenedPath }));
-}
-
-// TODO(Task 3): 상세 페이지는 아직 Contentlayer 데이터를 사용 — API 전환(getPost + toBlogSummary)
-// 시 이 임시 매핑을 제거하고 blogData의 toBlogSummary(ApiPostSummary)로 교체할 것.
-function toDetailBlogSummary(blog: (typeof allBlogs)[number]): BlogSummary {
-    return {
-        title: blog.title,
-        description: blog.description,
-        image: blog.image.filePath.replace("../public", ""),
-        tags: blog.tags ?? [],
-        url: blog.url,
-        slug: blog._raw.flattenedPath,
-        publishedAt: blog.publishedAt,
-        updatedAt: blog.updatedAt,
-        readingTime: blog.readingTime.text,
-        viewCount: 0,
-        _id: blog._id,
-    };
+    const posts = await getPublishedPosts();
+    return posts.map((post) => ({ slug: post.slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-    const { slug: blogSlug } = await params;
-    const blog = allBlogs.find((blog) => blog._raw.flattenedPath === blogSlug);
-
-    if (!blog) {
-        return {
-            title: "Blog Not Found",
-            description: "Blog not found",
-        };
+    const { slug } = await params;
+    const post = await getPost(slug);
+    if (!post) {
+        return { title: "Blog Not Found", description: "Blog not found" };
     }
 
-    const publishedTime = new Date(blog.publishedAt).toISOString();
-    const modifiedTime = new Date(blog.updatedAt).toISOString();
-
-    let imageList = [siteMetaData.socialBanner];
-
-    if (blog.image) {
-        imageList =
-            typeof blog.image.filePath === "string"
-                ? [siteMetaData.siteUrl + blog.image.filePath.replace("../public", "")]
-                : [blog.image.filePath]; // ImageFieldData를 string 배열로 변환
-    }
-
-    const ogImage = imageList.map((image) => {
-        return {
-            url: image.includes("http") ? image : siteMetaData.siteUrl + image,
+    const imageUrl = resolveImageUrl(post.cover_image_url);
+    const ogImage = [
+        {
+            url: imageUrl.startsWith("http") ? imageUrl : siteMetaData.siteUrl + imageUrl,
             width: 1200,
             height: 630,
-        };
-    });
-
-    const authors = blog?.author ? [blog.author] : siteMetaData.author;
+        },
+    ];
 
     return {
-        title: `${blog?.title}`,
-        description: blog?.description,
-        alternates: {
-            canonical: blog.url,
-        },
+        title: post.title,
+        description: post.description,
+        alternates: { canonical: `/blogs/${post.slug}` },
         openGraph: {
-            title: blog?.title,
-            description: blog?.description,
-            url: siteMetaData.siteUrl + blog.url,
+            title: post.title,
+            description: post.description,
+            url: `${siteMetaData.siteUrl}/blogs/${post.slug}`,
             siteName: siteMetaData.title,
             locale: siteMetaData.locale,
             type: "article",
-            publishedTime: publishedTime,
-            modifiedTime: modifiedTime,
+            publishedTime: new Date(post.published_at).toISOString(),
+            modifiedTime: new Date(post.updated_at).toISOString(),
             images: ogImage,
-            authors: authors.length > 0 ? authors : [siteMetaData.author],
+            authors: [post.author],
         },
         twitter: {
             card: "summary_large_image",
-            title: blog?.title,
-            description: blog?.description,
+            title: post.title,
+            description: post.description,
             images: ogImage,
         },
     };
 }
 
 export default async function BlogPage({ params }: { params: Promise<{ slug: string }> }) {
-    const { slug: blogSlug } = await params;
-    const blog = allBlogs.find((blog) => blog._raw.flattenedPath === blogSlug);
+    const { slug } = await params;
+    const post = await getPost(slug);
+    if (!post) notFound();
 
-    if (!blog) {
-        notFound();
-    }
-
-    const publishedTime = new Date(blog.publishedAt).toISOString();
-    const modifiedTime = new Date(blog.updatedAt).toISOString();
-    const authors = blog?.author ? [blog.author] : siteMetaData.author;
-
+    const imageUrl = resolveImageUrl(post.cover_image_url);
     const jsonLd = {
         "@context": "https://schema.org",
         "@type": "NewsArticle",
-        headline: blog?.title,
-        description: blog?.description,
-        image: blog.image
-            ? [siteMetaData.siteUrl + blog.image.filePath.replace("../public", "")]
-            : [siteMetaData.socialBanner],
-        datePublished: publishedTime,
-        dateModified: modifiedTime,
-        author: [
-            {
-                "@type": "Person",
-                name: authors,
-                url: siteMetaData.siteUrl + blog.url,
-            },
-        ],
+        headline: post.title,
+        description: post.description,
+        image: [imageUrl.startsWith("http") ? imageUrl : siteMetaData.siteUrl + imageUrl],
+        datePublished: new Date(post.published_at).toISOString(),
+        dateModified: new Date(post.updated_at).toISOString(),
+        author: [{ "@type": "Person", name: [post.author], url: `${siteMetaData.siteUrl}/blogs/${post.slug}` }],
     };
 
     return (
         <section>
-            {/* Add JSON-LD to your page */}
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
             <article>
                 <div className="mb-8 text-center relative w-full h-[70vh] bg-dark">
                     <div className="w-full z-10 flex flex-col items-center justify-center absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                         <Tag
-                            name={blog.tags?.[0] ? slug(blog.tags[0]) : "uncategorized"}
-                            link={`/categories/${blog.tags?.[0] ? slug(blog.tags[0]) : "uncategorized"}`}
+                            name={post.tags[0] ? slugify(post.tags[0]) : "uncategorized"}
+                            link={`/categories/${post.tags[0] ? slugify(post.tags[0]) : "uncategorized"}`}
                             className="px-6 text-sm py-2"
                         />
                         <h1 className="inline-block mt-6 font-semibold capitalize text-light text-2xl md:text-3xl lg:text-5xl leading-normal relative w-5/6">
-                            {blog?.title}
+                            {post.title}
                         </h1>
                     </div>
                     <div className="absolute top-0 left-0 right-0 bottom-0 h-full bg-dark/60 dark:bg-dark/40" />
                     <Image
-                        src={blog.image.filePath.replace("../public", "")}
-                        placeholder="blur"
-                        blurDataURL={blog.image.blurhashDataUrl}
-                        alt={blog.title}
-                        width={blog.image.width}
-                        height={blog.image.height}
+                        src={imageUrl}
+                        alt={post.title}
+                        width={1200}
+                        height={630}
                         className="aspect-square w-full h-full object-cover object-center"
                         priority
                         sizes="100vw"
                     />
                 </div>
-                <BlogDetails blog={toDetailBlogSummary(blog)} slug={blogSlug} />
+                <BlogDetails blog={toBlogSummary(post)} slug={slug} />
                 <div className="grid grid-cols-12 gap-y-8 lg:gap-8 sxl:gap-16 mt-8 px-5 md:px-10">
                     <div className="col-span-12 md:col-span-3">
                         <details className="border-[1px] border-solid border-dark dark:border-light text-dark dark:text-light rounded-lg p-4 sticky top-6 max-h-[80vh] overflow-hidden overflow-y-auto">
@@ -159,33 +106,29 @@ export default async function BlogPage({ params }: { params: Promise<{ slug: str
                                 Table of Contents
                             </summary>
                             <ul className="mt-4 font-in text-base">
-                                {blog.toc.map((heading: any) => {
-                                    return (
-                                        <li key={heading.slug} className="py-1">
-                                            <a
-                                                href={`#${heading.slug}`}
-                                                data-level={heading.level}
-                                                className="data-[level=two]:pl-0 data-[level=two]:pt-2 data-[level=two]:border-t border-solid border-dark/40
+                                {post.toc.map((heading) => (
+                                    <li key={heading.slug} className="py-1">
+                                        <a
+                                            href={`#${heading.slug}`}
+                                            data-level={heading.level}
+                                            className="data-[level=two]:pl-0 data-[level=two]:pt-2 data-[level=two]:border-t border-solid border-dark/40
                                         data-[level=three]:pl-4 sm:data-[level=three]:pl-6
                                         flex items-center justify-start"
-                                            >
-                                                {heading.level == "three" ? (
-                                                    <span className="flex w-1 h-1 rouned-full bg-dark mr-2">
-                                                        &nbsp;
-                                                    </span>
-                                                ) : null}
-                                                <span className="hover:underline">{heading.text}</span>
-                                            </a>
-                                        </li>
-                                    );
-                                })}
+                                        >
+                                            {heading.level == "three" ? (
+                                                <span className="flex w-1 h-1 rouned-full bg-dark mr-2">&nbsp;</span>
+                                            ) : null}
+                                            <span className="hover:underline">{heading.text}</span>
+                                        </a>
+                                    </li>
+                                ))}
                             </ul>
                         </details>
                     </div>
-                    <RenderMdx blog={blog} />
+                    <PostBody html={post.content_html} />
                 </div>
                 <div className="px-5 md:px-10">
-                    <Comments slug={blogSlug} />
+                    <Comments slug={slug} />
                 </div>
             </article>
         </section>
