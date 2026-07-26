@@ -7,11 +7,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = (await request.json().catch(() => ({}))) as { slug?: string };
+    const parsed = await request.json().catch(() => null);
+    const body = (parsed && typeof parsed === "object" ? parsed : {}) as { slug?: string };
     if (body.slug) {
-        revalidateTag(`post:${body.slug}`, {});
+        revalidateTag(`post:${body.slug}`, { expire: 0 });
     }
-    revalidateTag("posts", {});
+    revalidateTag("posts", { expire: 0 });
 
     return NextResponse.json({ revalidated: true, slug: body.slug ?? null });
 }
