@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import CodeMirror from "@uiw/react-codemirror";
 import { html as htmlLang } from "@codemirror/lang-html";
@@ -22,6 +22,7 @@ interface Meta {
 const PostEditor = ({ initial }: { initial: ApiPostDetail | null }) => {
     const router = useRouter();
     const isNew = initial === null;
+    const draftKey = DRAFT_KEY(initial?.slug ?? "new");  // 컴포넌트 생명주기 동안 고정 (initial은 마운트 후 안 바뀜)
     const [meta, setMeta] = useState<Meta>({
         slug: initial?.slug ?? "",
         title: initial?.title ?? "",
@@ -35,19 +36,23 @@ const PostEditor = ({ initial }: { initial: ApiPostDetail | null }) => {
     const [saving, setSaving] = useState(false);
     const [revalidateFailed, setRevalidateFailed] = useState<string | null>(null);  // 실패한 slug
 
-    // 초안 자동 백업 (5초 간격)
+    // 최신 메타/콘텐츠를 ref로 추적 — 인터벌이 키 입력마다 재등록되지 않도록 함
+    const latestDraftRef = useRef({ meta, content });
     useEffect(() => {
-        const key = DRAFT_KEY(meta.slug || "new");
+        latestDraftRef.current = { meta, content };
+    }, [meta, content]);
+
+    // 초안 자동 백업 (5초 간격 — draftKey가 고정이므로 인터벌은 마운트 시 한 번만 등록됨)
+    useEffect(() => {
         const timer = setInterval(() => {
-            localStorage.setItem(key, JSON.stringify({ meta, content, at: Date.now() }));
+            localStorage.setItem(draftKey, JSON.stringify({ ...latestDraftRef.current, at: Date.now() }));
         }, 5000);
         return () => clearInterval(timer);
-    }, [meta, content]);
+    }, [draftKey]);
 
     // 초안 복구 제안 (마운트 시 1회)
     useEffect(() => {
-        const key = DRAFT_KEY(initial?.slug ?? "new");
-        const raw = localStorage.getItem(key);
+        const raw = localStorage.getItem(draftKey);
         if (!raw) return;
         try {
             const draft = JSON.parse(raw);
@@ -110,7 +115,7 @@ const PostEditor = ({ initial }: { initial: ApiPostDetail | null }) => {
                 setStatus("저장됨 — 캐시 반영 실패");
                 setRevalidateFailed(saved.slug);
             }
-            localStorage.removeItem(DRAFT_KEY(initial?.slug ?? "new"));
+            localStorage.removeItem(draftKey);
             if (isNew) router.replace(`/admin/posts/${saved.slug}`);
         } catch (e) {
             setStatus(`저장 실패: ${String(e)}`);
