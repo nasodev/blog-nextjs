@@ -22,7 +22,6 @@ services:
       - ./public:/app/public:ro
       - ./types:/app/types:ro
       - ./utils:/app/utils:ro
-      - ./contentlayer.config.ts:/app/contentlayer.config.ts:ro
       - ./tailwind.config.ts:/app/tailwind.config.ts:ro
 
     labels:
