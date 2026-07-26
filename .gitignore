@@ -57,3 +57,4 @@ docker-compose.override.yml
 # content migration script
 scripts/migration/node_modules/
 scripts/migration/out/
+scripts/migration/views.csv
