@@ -7,6 +7,7 @@ import { html as htmlLang } from "@codemirror/lang-html";
 import { createPost, updatePost, uploadImage, requestRevalidate, PostPayload } from "@/lib/api/admin";
 import { ApiPostDetail } from "@/lib/api/types";
 import { API_URL } from "@/lib/api/posts";
+import EditorPreview from "@/components/Admin/EditorPreview";
 
 const DRAFT_KEY = (slug: string) => `blog-draft:${slug}`;
 
@@ -220,8 +221,7 @@ const PostEditor = ({ initial }: { initial: ApiPostDetail | null }) => {
                     />
                 </div>
                 <div className="border rounded overflow-hidden">
-                    {/* Task 9: <EditorPreview html={content} /> */}
-                    <div className="p-4 text-sm opacity-50">프리뷰 (다음 태스크)</div>
+                    <EditorPreview html={content} />
                 </div>
             </div>
         </main>
