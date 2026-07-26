@@ -69,7 +69,7 @@ npm run lint      # ESLint
 - **글 작성/수정**: MDX가 아니라 `/admin` 에디터에서 HTML 본문을 직접 작성 (`components/Admin/PostEditor.tsx`)
 - **저장 즉시 반영**: 저장/삭제 시 `requestRevalidate(slug)` 호출 → `app/api/revalidate/route.ts`가 공유 시크릿 검증 후 해당 글 태그 + `"posts"` 태그를 즉시 만료
 - **빌드 타임 SSG**: `generateStaticParams()`가 빌드 중 `NEXT_PUBLIC_API_URL`로 전체 글 목록을 fetch — 이후에는 태그 기반 on-demand ISR로 갱신 (재빌드 불필요)
-- **레거시 원본**: `content/{slug}/index.mdx` (21개, Contentlayer 시절 글)는 저장소에 보존되어 있으나 빌드에는 더 이상 쓰이지 않음 — 콘텐츠 마이그레이션 스크립트(`docs/superpowers/plans/2026-07-25-content-migration.md`)가 HTML로 변환해 backend-api DB에 적재할 때까지의 원본 자료
+- **레거시 원본**: `content/{slug}/index.mdx` (22개, Contentlayer 시절 글)는 참고용으로만 보존 — **마이그레이션 완료(2026-07-26)**: `scripts/migration/`의 변환기(convert.mjs)·적재기(load_posts.py)로 전량 HTML 변환 후 프로덕션 DB 적재됨. 빌드·서빙에는 쓰이지 않음
 
 ### Data Flow
 
@@ -101,7 +101,7 @@ npm run lint      # ESLint
 
 ### 새 글 작성 (현재 방식)
 
-`/admin`에서 작성 (Google 로그인 필요). 제목/설명/커버 이미지/태그/발행 여부를 입력하고 본문은 CodeMirror로 HTML을 직접 작성 (MDX 아님). 저장 시 backend-api로 전송되고 자동으로 재검증까지 호출됨. 페이로드 형태 (`lib/api/admin.ts`):
+`/admin`에서 작성 (Google 로그인 필요). 제목/설명/커버 이미지/태그/발행 여부를 입력하고 본문은 CodeMirror로 HTML을 직접 작성 (MDX 아님). 본문 HTML은 **blog-html 스킬**(`.claude/skills/blog-html/SKILL.md`)로 MD 초안을 규약(`.post-body` 스코프, 다크모드, 정적 하이라이팅) 준수 HTML로 변환해 붙여넣는 흐름을 권장. 저장 시 backend-api로 전송되고 자동으로 재검증까지 호출됨. 페이로드 형태 (`lib/api/admin.ts`):
 
 ```typescript
 interface PostPayload {
@@ -117,9 +117,9 @@ interface PostPayload {
 }
 ```
 
-### 레거시: `content/` MDX (마이그레이션 대기)
+### 레거시: `content/` MDX (마이그레이션 완료 — 참고용 보존)
 
-`content/{topic}-{YYYYMMDD}-v01/index.mdx` 형태의 기존 글 21개는 저장소에 보존되어 있으나 Contentlayer 제거 이후 빌드에는 쓰이지 않음. 아래 frontmatter/코드 블록 문법은 **이 레거시 파일에만 해당** — 콘텐츠 마이그레이션 플랜(`docs/superpowers/plans/2026-07-25-content-migration.md`)이 HTML로 변환할 때까지의 원본 참고용.
+`content/{topic}-{YYYYMMDD}-v01/index.mdx` 형태의 기존 글 22개는 **2026-07-26 마이그레이션 완료** — `scripts/migration/convert.mjs`(기존 Contentlayer와 동일한 remark/rehype/shiki 체인)로 HTML 변환 후 `load_posts.py`로 프로덕션 DB에 적재됨(published_at은 KST 벽시계 보존). 원본은 삭제하지 말고 참고용으로 보존. 아래 frontmatter/코드 블록 문법은 **이 레거시 파일에만 해당**하며, 관련 `blog-frontmatter` 스킬은 deprecated.
 
 ```yaml
 ---
@@ -221,6 +221,7 @@ docker compose -f docker-compose.prod.yml up -d
 - SSG: `generateStaticParams()`가 빌드 중 backend-api(`NEXT_PUBLIC_API_URL`)를 호출해 모든 블로그/카테고리 페이지를 정적 생성 — 빌드 시점에 API가 응답 가능해야 함 (GitHub Actions 러너 → api.funq.kr 공인 도메인 접근은 문제없음; 로컬에서 `docker build`를 직접 실행할 때도 build-arg로 API URL을 넘기지 않으면 SSG가 실패함에 유의)
 - Contentlayer 제거(Task 10) 이후 빌드는 메모리 집약적이지 않고 API 응답 속도에만 좌우됨 — 이전 Contentlayer+Shiki 조합(수 분, Vercel 무료티어 1GB 빌드 실패 원인) 대비 대폭 단축
 - `NEXT_PUBLIC_*` 환경변수는 빌드 타임에 인라인되므로, 값을 바꾸려면 컨테이너 재시작이 아니라 이미지 재빌드가 필요
+- Dockerfile은 빌더/러너 모두 `TZ=Asia/Seoul` 고정 — 날짜가 서버 로컬 타임존으로 포맷되므로 UTC면 09시 이전 KST 발행 글이 하루 전 날짜로 표시됨
 
 ## Project Structure (Docker 관련)
 
@@ -231,6 +232,11 @@ blog-nextjs/
 ├── docker-compose.prod.yml  # 프로덕션 환경 (GHCR 이미지)
 ├── .dockerignore
 ├── run-local.sh             # 로컬 실행 스크립트 (docker/npm)
+├── scripts/
+│   └── migration/           # 레거시 MDX→HTML 마이그레이션 도구 (완료된 일회성 작업, 보존용)
+│       ├── convert.mjs      #   MDX → HTML + 메타 JSON 변환기
+│       ├── load_posts.py    #   backend 컨테이너 내 DB 적재기 (upsert)
+│       └── load_views.py    #   Supabase 조회수 이관기 (미사용 — 조회수 0부터 재시작 결정)
 ├── deploy/
 │   └── docker-setup.sh      # 서버 초기 설정 스크립트
 └── .github/
