@@ -59,7 +59,7 @@ export const uploadImage = async (file: File): Promise<{ url: string; filename: 
 };
 
 export const requestRevalidate = async (slug: string): Promise<void> => {
-    await fetch("/api/revalidate", {
+    const res = await fetch("/api/revalidate", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -67,4 +67,5 @@ export const requestRevalidate = async (slug: string): Promise<void> => {
         },
         body: JSON.stringify({ slug }),
     });
+    if (!res.ok) throw new Error(`Revalidate failed: ${res.status}`);
 };

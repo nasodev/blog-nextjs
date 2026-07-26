@@ -1,20 +1,19 @@
 import BlogGridInfinite from "@/components/Blog/BlogGridInfinite";
 import Categories from "@/components/Blog/Categories";
 import { getPublishedPosts } from "@/lib/api/posts";
-import GithubSlugger, { slug } from "github-slugger";
+import { slug } from "github-slugger";
 import { sortBlogs } from "@/utils";
 import { toBlogSummary } from "@/utils/blogData";
 import siteMetaData from "@/utils/siteMetaData";
 
 export async function generateStaticParams() {
     const posts = await getPublishedPosts();
-    const slugger = new GithubSlugger();
     const categories: string[] = [];
     const paths = [{ slug: "all" }];
 
     posts.forEach((post) => {
         post.tags?.forEach((tag) => {
-            const slugified = slugger.slug(tag);
+            const slugified = slug(tag);
             if (!categories.includes(slugified)) {
                 categories.push(slugified);
                 paths.push({ slug: slugified });

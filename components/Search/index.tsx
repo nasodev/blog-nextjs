@@ -67,8 +67,9 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
                 const posts = (await res.json()) as ApiPostSummary[];
                 blogsRef.current = posts.map(toBlogSummary);
                 fuseRef.current = new Fuse(blogsRef.current, fuseOptions);
-            } catch {
+            } catch (e) {
                 // 검색 인덱스 로드 실패 — 결과 없음 상태 유지 (검색 기능만 영향, 에러 토스트 불필요)
+                console.error(e);
             }
         }
         setTimeout(() => inputRef.current?.focus(), 100);
