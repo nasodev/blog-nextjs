@@ -11,7 +11,6 @@ export default defineConfig([
         // that aren't real source need to be listed here explicitly.
         ignores: [
             ".next/**",
-            ".contentlayer/**",
             "node_modules/**",
             "public/**",
         ],

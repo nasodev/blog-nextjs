@@ -2,8 +2,17 @@
 
 > **AI Agent Reference Guide**: This document provides comprehensive analysis of the Next.js blog project for AI development assistance.
 
-**Last Updated**: 2025-11-16
-**Next.js Version**: 13.5.8
+> **Currency note (2026-07)**: This document predates the Next.js 16 migration and the
+> Contentlayer/Supabase → backend-api conversion. Sections below covering **Content
+> Management**, **Data Fetching Patterns** (view counting, Contentlayer-based SSG), and
+> **Environment Variables** have been updated to reflect the current API-driven
+> architecture; the rest of the document (tech stack version numbers, component
+> inventory, improvement wishlist) has not been fully re-audited and may still describe
+> the pre-migration state. **`CLAUDE.md` is the authoritative up-to-date reference** —
+> treat this file as a detailed but partially stale supplement.
+
+**Last Updated**: 2025-11-16 (partial update 2026-07, see note above)
+**Next.js Version**: 13.5.8 (stale — repo is now on 16.2.6, see `CLAUDE.md`)
 **Primary Language**: Korean (ko_KR)
 **Site URL**: https://blog.funq.kr
 
@@ -34,7 +43,7 @@ This is a **production-ready, SEO-optimized blog platform** built with Next.js 1
 - **Total Posts**: 11 MDX articles
 - **Categories**: Dynamic tag-based system
 - **Theme Support**: Dark/Light mode with system preference
-- **View Tracking**: Supabase-powered analytics
+- **View Tracking**: backend-api powered (`/blog/posts/{slug}/view`)
 - **Comments**: Giscus (GitHub Discussions) integration
 - **SEO**: Full JSON-LD, Open Graph, sitemap support
 - **PWA**: Web app manifest enabled
@@ -69,10 +78,9 @@ This is a **production-ready, SEO-optimized blog platform** built with Next.js 1
 - **next/font** - Font optimization (Inter, Manrope)
 
 ### Backend & Data
-- **Supabase** - View counting database
-  - `@supabase/auth-helpers-nextjs 0.10.0`
-  - Singleton client pattern
-  - RPC functions for atomic operations
+- **backend-api** (`/blog` domain, separate FastAPI service) - All content, views, and admin write
+  operations. Supabase has been fully removed; see the *Content Management* and *Data Fetching
+  Patterns* sections below for the current API-based flow.
 
 ### Utilities
 - **date-fns 2.30.0** - Date formatting
@@ -228,49 +236,66 @@ export async function generateMetadata({ params }): Promise<Metadata> {
 
 ## Content Management
 
-### Contentlayer Configuration
+**Current architecture (2026-07-)**: Content lives in backend-api's database, not in this
+repo. Contentlayer and the MDX build pipeline described below were removed; content is now
+fetched over HTTP at request/build time (`lib/api/posts.ts`) and authored through the `/admin`
+editor (`lib/api/admin.ts`, `components/Admin/PostEditor.tsx`) rather than by committing MDX
+files. See `CLAUDE.md`'s *Content Pipeline* section for the current read/write flow diagram.
 
-**Source**: `content` directory
-**Pattern**: `**/**/*.mdx`
-**Document Type**: `Blog`
+### API Post Shape
 
-### Frontmatter Schema
+Returned by backend-api (`lib/api/types.ts`). Reading time and table-of-contents — previously
+Contentlayer computed fields — are now computed server-side by backend-api and returned as
+plain fields, rather than derived at build time in this repo:
 
 ```typescript
+interface ApiPostSummary {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  author: string;
+  cover_image_url: string | null;
+  tags: string[];
+  reading_time_minutes: number;   // computed by backend-api, not this repo
+  view_count: number;
+  published_at: string;
+  updated_at: string;
+}
+
+interface ApiPostDetail extends ApiPostSummary {
+  content_html: string;                       // pre-rendered HTML, inserted directly (no MDX compile step)
+  toc: { level: "two" | "three"; text: string; slug: string }[];  // computed by backend-api
+  is_published: boolean;
+}
+```
+
+### Legacy: Contentlayer / MDX pipeline (pre-migration content only)
+
+The `content/{topic}-{YYYYMMDD}-v01[-initials]/index.mdx` files (21 posts as of this writing)
+are still present in the repo but are **no longer read by the Next.js build** — Contentlayer,
+`next-contentlayer2`, and the MDX rehype/remark plugins were uninstalled. They remain solely as
+source material for the content-migration script
+(`docs/superpowers/plans/2026-07-25-content-migration.md`), which converts each MDX file to
+HTML and loads it into backend-api's database. The frontmatter schema and MDX processing
+pipeline below describe that legacy format, not the live pipeline:
+
+```typescript
+// Legacy Contentlayer frontmatter (content/*/index.mdx only)
 {
   title: string           // Required - Post title
   publishedAt: date       // Required - Publish date
   updatedAt: date         // Required - Last update
   description: string     // Required - SEO description
-  image: {                // Required - Cover image
-    filePath: string,
-    blurhashDataUrl: string
-  }
+  image: string           // Required - Cover image path
   isPublished: boolean    // Default: true
   author: string          // Required - Author name
   tags: string[]          // Array of category tags
 }
 ```
 
-### Computed Fields
-
-Automatically generated by Contentlayer:
-
-1. **url**: `string`
-   - Generated from `_raw.flattenedPath`
-   - Used for routing
-
-2. **readingTime**: `{ text: string, minutes: number, time: number, words: number }`
-   - Calculated from `body.raw`
-   - Displayed on post cards
-
-3. **toc**: `{ level: string, text: string, slug: string }[]`
-   - Extracted from H1-H6 headings
-   - Used for table of contents navigation
-
-### MDX Processing Pipeline
-
 ```
+Legacy MDX processing (migration script reference only):
 MDX File
   → remark-gfm (GitHub Flavored Markdown)
   → rehype-slug (Add IDs to headings)
@@ -280,18 +305,7 @@ MDX File
   → Next.js Static Generation
 ```
 
-### Content Organization Pattern
-
-```
-content/
-  [topic]-[date]-[version]-[initials]/
-    index.mdx
-```
-
-Example:
-```
-content/cursor-20250202-v01-cg/index.mdx
-```
+Content organization pattern (legacy, preserved for migration): `content/[topic]-[date]-[version]-[initials]/index.mdx`, e.g. `content/cursor-20250202-v01-cg/index.mdx`.
 
 ---
 
@@ -598,105 +612,94 @@ Key styles:
 
 ## Data Fetching Patterns
 
-### Static Site Generation (SSG)
+### Static Site Generation (SSG) + on-demand ISR
 
-All content pages use SSG for optimal performance:
+Content pages are statically generated at build time from backend-api, then kept fresh via
+tag-based on-demand revalidation (not time-based revalidation) — see `CLAUDE.md`'s *Content
+Pipeline* section for the full write → revalidate → re-fetch diagram.
 
 #### Blog Posts
 ```typescript
 // app/blogs/[slug]/page.tsx
 export async function generateStaticParams() {
-  return allBlogs.map((blog) => ({
-    slug: blog._raw.flattenedPath
-  }));
+  const posts = await getPublishedPosts();
+  return posts.map((post) => ({ slug: post.slug }));
 }
 ```
 
-**Build Time**: All blog post pages pre-rendered
-**Data Source**: Contentlayer `allBlogs`
+**Build Time**: All blog post pages pre-rendered (backend-api must be reachable at build time)
+**Data Source**: `lib/api/posts.ts` → backend-api `GET /blog/posts` / `GET /blog/posts/{slug}`
+**Cache tags**: `"posts"` (lists), `` `post:${slug}` `` (individual post) — invalidated by
+`app/api/revalidate/route.ts` via `revalidateTag(tag, { expire: 0 })`
 
 #### Category Pages
 ```typescript
-// app/categories/[slug]/page.tsx
+// app/categories/[slug]/page.tsx (abridged)
 export async function generateStaticParams() {
-  const categories = allBlogs.flatMap(blog => blog.tags);
-  const uniqueCategories = [...new Set(categories)];
-  return [
-    { slug: 'all' },
-    ...uniqueCategories.map(cat => ({ slug: cat }))
-  ];
+  const posts = await getPublishedPosts();
+  const slugger = new GithubSlugger();
+  const paths = [{ slug: "all" }];
+  posts.forEach((post) => {
+    post.tags?.forEach((tag) => {
+      const slugified = slugger.slug(tag);
+      // ...push each unique slugified tag into paths (dedup omitted here)
+    });
+  });
+  return paths;
 }
 ```
 
-**Build Time**: One page per unique tag + "all"
-**Data Source**: Extracted from blog frontmatter
+**Build Time**: One page per unique slugified tag + "all"
+**Data Source**: Tags extracted from the API post list (`lib/api/posts.ts`); slugified with
+`github-slugger` (still a dependency — do not remove) so category URLs match `Tag.tsx` links
 
 #### Home Page
 ```typescript
 // app/page.tsx
-import { allBlogs } from 'contentlayer/generated';
+import { getPublishedPosts } from "@/lib/api/posts";
+import { toBlogSummary } from "@/utils/blogData";
 
-const sortedBlogs = allBlogs
-  .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
-  .filter(blog => blog.isPublished);
+const posts = await getPublishedPosts();
+const blogs = posts.map(toBlogSummary);
 ```
 
-**Build Time**: Single static page
-**Data Source**: Direct import from Contentlayer
+**Data Source**: Direct fetch from backend-api via `lib/api/posts.ts` (no local data import);
+`toBlogSummary` (`utils/blogData.ts`) adapts the API shape to the props existing Blog components expect
 
 ### Client-Side Data Fetching
 
-#### View Counting (Supabase)
+#### View Counting
 
-**File**: `lib/supabase/api/views.ts`
+**File**: `lib/api/views.ts`
 
 ```typescript
-// Increment view count
-export async function incrementViewCount(slug: string) {
-  const supabase = getSupabaseClient();
-  await supabase.rpc('increment_view_count', { slug_text: slug });
-}
-
-// Get current view count
-export async function getViewCount(slug: string) {
-  const supabase = getSupabaseClient();
-  const { data } = await supabase
-    .from('views')
-    .select('count')
-    .eq('slug', slug)
-    .single();
-  return data?.count ?? 0;
+export async function incrementView(slug: string): Promise<number> {
+  const res = await fetch(`${API_URL}/blog/posts/${slug}/view`, { method: "POST" });
+  const data = (await res.json()) as { view_count: number };
+  return data.view_count;
 }
 ```
 
 **Pattern**:
-1. Component mounts
-2. `useEffect` calls `incrementViewCount()`
-3. State updates with new count
+1. `ViewCounter.tsx` mounts (guarded by a `useRef` so it only fires once per mount)
+2. `useEffect` calls `incrementView(slug)` — backend-api increments and returns the new count
+   in the same call (no separate read-then-write round trip)
+3. State updates with the returned count
 4. Display to user
 
-**Error Handling**: Graceful degradation (shows 0 on error)
+**Error Handling**: Shows a Korean error message and logs to console on failure (no silent
+fallback to 0 — see `components/Blog/ViewCounter.tsx`)
 
-### Supabase Client Pattern
+### Admin Write Path (Firebase-authenticated)
 
-**File**: `lib/supabase/client.ts`
+**File**: `lib/api/admin.ts`
 
-**Singleton Pattern**:
-```typescript
-let supabaseClient: SupabaseClient | null = null;
-
-export function getSupabaseClient(): SupabaseClient {
-  if (!supabaseClient) {
-    supabaseClient = createClientComponentClient();
-  }
-  return supabaseClient;
-}
-```
-
-**Benefits**:
-- Single connection per client
-- Reduced overhead
-- Consistent configuration
+All mutating calls (`createPost`, `updatePost`, `deletePost`, `uploadImage`, plus the admin-only
+`listAllPosts`/`getPostForEdit` reads that include unpublished drafts) attach a Firebase ID token
+as a `Bearer` header, obtained via `lib/firebase.ts`'s `getIdToken()`. backend-api independently
+authorizes the token against its own admin allowlist (`BLOG_ADMIN_UIDS`, a backend-api env var —
+not configured in this repo). There is no client-side Supabase/DB singleton anymore; every call
+is a plain `fetch` against `NEXT_PUBLIC_API_URL`.
 
 ---
 
@@ -852,18 +855,9 @@ console.log(hello);
 
 ### 4. View Tracking
 
-**Backend**: Supabase PostgreSQL
-**Table**: `views`
-**Schema**:
-```sql
-{
-  slug: text (primary key),
-  count: integer
-}
-```
-
-**RPC Function**: `increment_view_count(slug_text)`
-**Client**: Singleton pattern for efficiency
+**Backend**: backend-api (`POST /blog/posts/{slug}/view`) — Supabase was removed; see
+*Data Fetching Patterns → View Counting* above for the current implementation.
+**Client**: Plain `fetch` in `lib/api/views.ts` (no client singleton needed)
 **Display**: ViewCounter component on blog posts
 
 ### 5. Table of Contents
@@ -1135,7 +1129,7 @@ export default function ComponentName({ props }: Props) {
 
 13. **Post Reactions**
     - Like/useful buttons
-    - Store in Supabase
+    - Store via backend-api
     - Display counts
 
 14. **Author Pages**
@@ -1179,13 +1173,13 @@ export default function ComponentName({ props }: Props) {
 
 ## Environment Variables
 
-Required for full functionality:
+See `.env.example` and `CLAUDE.md`'s *Environment Variables* section for the current,
+authoritative list (`NEXT_PUBLIC_API_URL`, `REVALIDATE_SECRET` / `NEXT_PUBLIC_REVALIDATE_SECRET`,
+`NEXT_PUBLIC_FIREBASE_*`). The Supabase variables previously documented here
+(`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) no longer apply — Supabase was
+fully removed.
 
 ```bash
-# Supabase (View Counting)
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-
 # Optional: Analytics
 # NEXT_PUBLIC_GA_ID=your_google_analytics_id
 ```
@@ -1246,10 +1240,11 @@ export async function generateMetadata({ params }): Promise<Metadata> {
 }
 ```
 
-**Using Supabase**:
+**Fetching from backend-api**:
 ```typescript
-import { getSupabaseClient } from '@/lib/supabase/client';
-const supabase = getSupabaseClient();
+import { getPublishedPosts, getPost } from '@/lib/api/posts';
+const posts = await getPublishedPosts();       // tagged "posts"
+const post = await getPost(slug);              // tagged `post:${slug}`
 ```
 
 **Dark mode styling**:
@@ -1261,7 +1256,7 @@ const supabase = getSupabaseClient();
 
 - **New component**: Check similar components in `components/`
 - **New page**: Review existing pages in `app/`
-- **Content changes**: Check `contentlayer.config.ts` schema
+- **Content changes**: Check `lib/api/types.ts` for the current API post shape (legacy MDX frontmatter uses `contentlayer.config.ts`'s old schema, migration-only)
 - **Styling changes**: Review `tailwind.config.ts` custom theme
 - **Data fetching**: Check patterns in existing pages
 - **SEO changes**: Review current metadata generation
@@ -1271,10 +1266,9 @@ const supabase = getSupabaseClient();
 ## Support & Resources
 
 - **Next.js Docs**: https://nextjs.org/docs
-- **Contentlayer Docs**: https://contentlayer.dev
 - **Tailwind Docs**: https://tailwindcss.com/docs
-- **Supabase Docs**: https://supabase.com/docs
 - **Site URL**: https://blog.funq.kr
+- **Site URL (API)**: https://api.funq.kr
 
 ---
 
