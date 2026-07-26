@@ -5,8 +5,8 @@ import { createPortal } from "react-dom";
 import type Fuse from "fuse.js";
 import Link from "next/link";
 import Image from "next/image";
-import { allBlogs } from "contentlayer/generated";
-import { BlogSummary } from "@/utils/blogData";
+import { ApiPostSummary } from "@/lib/api/types";
+import { BlogSummary, toBlogSummary } from "@/utils/blogData";
 import { SearchIcon } from "@/components/icons";
 
 export interface SearchHandle {
@@ -18,26 +18,6 @@ const fuseOptions = {
     threshold: 0.3,
     includeScore: true,
 };
-
-// TODO(Task 4): 검색은 아직 Contentlayer 데이터를 사용 — API 전환(getPublishedPosts + toBlogSummary)
-// 시 이 임시 매핑을 제거하고 blogData의 toBlogSummary(ApiPostSummary)로 교체할 것.
-function toSearchSummary(blog: (typeof allBlogs)[number]): BlogSummary {
-    return {
-        title: blog.title,
-        description: blog.description,
-        image: blog.image.filePath.replace("../public", ""),
-        tags: blog.tags ?? [],
-        url: blog.url,
-        slug: blog._raw.flattenedPath,
-        publishedAt: blog.publishedAt,
-        updatedAt: blog.updatedAt,
-        readingTime: blog.readingTime.text,
-        viewCount: 0,
-        _id: blog._id,
-    };
-}
-
-const searchBlogs = allBlogs.filter((b) => b.isPublished).map(toSearchSummary);
 
 interface SearchResult {
     item: BlogSummary;
@@ -51,6 +31,7 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
     const fuseRef = useRef<Fuse<BlogSummary> | null>(null);
+    const blogsRef = useRef<BlogSummary[] | null>(null);
 
     const closeModal = useCallback(() => {
         setIsOpen(false);
@@ -77,8 +58,18 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
     const openModal = useCallback(async () => {
         setIsOpen(true);
         if (!fuseRef.current) {
-            const FuseModule = (await import("fuse.js")).default;
-            fuseRef.current = new FuseModule(searchBlogs, fuseOptions);
+            try {
+                const [{ default: Fuse }, res] = await Promise.all([
+                    import("fuse.js"),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/blog/posts?size=1000`),
+                ]);
+                if (!res.ok) throw new Error(`Failed to fetch posts: ${res.status}`);
+                const posts = (await res.json()) as ApiPostSummary[];
+                blogsRef.current = posts.map(toBlogSummary);
+                fuseRef.current = new Fuse(blogsRef.current, fuseOptions);
+            } catch {
+                // 검색 인덱스 로드 실패 — 결과 없음 상태 유지 (검색 기능만 영향, 에러 토스트 불필요)
+            }
         }
         setTimeout(() => inputRef.current?.focus(), 100);
     }, []);
@@ -192,15 +183,13 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
                                                         : "hover:bg-dark/5 dark:hover:bg-light/5"
                                                 }`}
                                             >
-                                                {item.image && (
-                                                    <Image
-                                                        src={item.image}
-                                                        alt={item.title}
-                                                        width={48}
-                                                        height={48}
-                                                        className="rounded-lg object-cover w-10 h-10 sm:w-14 sm:h-14 flex-shrink-0"
-                                                    />
-                                                )}
+                                                <Image
+                                                    src={item.image}
+                                                    alt={item.title}
+                                                    width={48}
+                                                    height={48}
+                                                    className="rounded-lg object-cover w-10 h-10 sm:w-14 sm:h-14 flex-shrink-0"
+                                                />
                                                 <div className="flex-1 min-w-0">
                                                     <h3 className="font-medium text-dark dark:text-light truncate text-sm sm:text-base">
                                                         {item.title}
