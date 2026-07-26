@@ -21,11 +21,17 @@ export default function AdminPostsPage() {
         if (!window.confirm(`"${slug}" 글을 삭제할까요?`)) return;
         try {
             await deletePost(slug);
-            await requestRevalidate(slug);
-            load();
         } catch (e) {
             setError(String(e));
+            return;
         }
+        try {
+            await requestRevalidate(slug);
+            setError(null);
+        } catch (e) {
+            setError(`"${slug}" 삭제됨 — 캐시 반영 실패`);
+        }
+        load();
     };
 
     return (
