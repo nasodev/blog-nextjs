@@ -10,9 +10,7 @@ const BlogLayoutThree = ({ blog }: BlogProp) => {
             <Link href={blog.url} className="w-full rounded-xl overflow-hidden">
                 <div className="relative w-full aspect-[4/3]">
                     <Image
-                        src={blog.image.filePath.replace("../public", "")}
-                        placeholder="blur"
-                        blurDataURL={blog.image.blurhashDataUrl}
+                        src={blog.image}
                         alt={blog.title}
                         fill
                         className="object-cover object-center group-hover:scale-105 transition-all ease duration-300"

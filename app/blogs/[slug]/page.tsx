@@ -7,10 +7,28 @@ import { slug } from "github-slugger";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import siteMetaData from "@/utils/siteMetaData";
-import { toBlogSummary } from "@/utils/blogData";
+import { BlogSummary } from "@/utils/blogData";
 
 export async function generateStaticParams() {
     return allBlogs.map((blog) => ({ slug: blog._raw.flattenedPath }));
+}
+
+// TODO(Task 3): 상세 페이지는 아직 Contentlayer 데이터를 사용 — API 전환(getPost + toBlogSummary)
+// 시 이 임시 매핑을 제거하고 blogData의 toBlogSummary(ApiPostSummary)로 교체할 것.
+function toDetailBlogSummary(blog: (typeof allBlogs)[number]): BlogSummary {
+    return {
+        title: blog.title,
+        description: blog.description,
+        image: blog.image.filePath.replace("../public", ""),
+        tags: blog.tags ?? [],
+        url: blog.url,
+        slug: blog._raw.flattenedPath,
+        publishedAt: blog.publishedAt,
+        updatedAt: blog.updatedAt,
+        readingTime: blog.readingTime.text,
+        viewCount: 0,
+        _id: blog._id,
+    };
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -133,7 +151,7 @@ export default async function BlogPage({ params }: { params: Promise<{ slug: str
                         sizes="100vw"
                     />
                 </div>
-                <BlogDetails blog={toBlogSummary(blog)} slug={blogSlug} />
+                <BlogDetails blog={toDetailBlogSummary(blog)} slug={blogSlug} />
                 <div className="grid grid-cols-12 gap-y-8 lg:gap-8 sxl:gap-16 mt-8 px-5 md:px-10">
                     <div className="col-span-12 md:col-span-3">
                         <details className="border-[1px] border-solid border-dark dark:border-light text-dark dark:text-light rounded-lg p-4 sticky top-6 max-h-[80vh] overflow-hidden overflow-y-auto">

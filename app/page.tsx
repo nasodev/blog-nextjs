@@ -1,11 +1,12 @@
 import HomeCoverSection from "@/components/Home/HomeCoverSection";
 import FeaturePosts from "@/components/Home/FeaturePosts";
-import { allBlogs } from "contentlayer/generated";
 import AllPostsSection from "@/components/Home/AllPostsSection";
+import { getPublishedPosts } from "@/lib/api/posts";
 import { toBlogSummary } from "@/utils/blogData";
 
-export default function Home() {
-    const blogs = allBlogs.filter((blog) => blog.isPublished).map(toBlogSummary);
+export default async function Home() {
+    const posts = await getPublishedPosts();
+    const blogs = posts.map(toBlogSummary);
     return (
         <main className="flex flex-col items-center justify-center">
             <HomeCoverSection blogs={blogs} />

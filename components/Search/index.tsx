@@ -6,7 +6,7 @@ import type Fuse from "fuse.js";
 import Link from "next/link";
 import Image from "next/image";
 import { allBlogs } from "contentlayer/generated";
-import { BlogSummary, toBlogSummary } from "@/utils/blogData";
+import { BlogSummary } from "@/utils/blogData";
 import { SearchIcon } from "@/components/icons";
 
 export interface SearchHandle {
@@ -19,7 +19,25 @@ const fuseOptions = {
     includeScore: true,
 };
 
-const searchBlogs = allBlogs.filter((b) => b.isPublished).map(toBlogSummary);
+// TODO(Task 4): 검색은 아직 Contentlayer 데이터를 사용 — API 전환(getPublishedPosts + toBlogSummary)
+// 시 이 임시 매핑을 제거하고 blogData의 toBlogSummary(ApiPostSummary)로 교체할 것.
+function toSearchSummary(blog: (typeof allBlogs)[number]): BlogSummary {
+    return {
+        title: blog.title,
+        description: blog.description,
+        image: blog.image.filePath.replace("../public", ""),
+        tags: blog.tags ?? [],
+        url: blog.url,
+        slug: blog._raw.flattenedPath,
+        publishedAt: blog.publishedAt,
+        updatedAt: blog.updatedAt,
+        readingTime: blog.readingTime.text,
+        viewCount: 0,
+        _id: blog._id,
+    };
+}
+
+const searchBlogs = allBlogs.filter((b) => b.isPublished).map(toSearchSummary);
 
 interface SearchResult {
     item: BlogSummary;
@@ -176,7 +194,7 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
                                             >
                                                 {item.image && (
                                                     <Image
-                                                        src={item.image.filePath.replace("../public", "")}
+                                                        src={item.image}
                                                         alt={item.title}
                                                         width={48}
                                                         height={48}

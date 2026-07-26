@@ -1,32 +1,32 @@
-import { Blog } from "contentlayer/generated";
+import { ApiPostSummary } from "@/lib/api/types";
+import { resolveImageUrl } from "@/lib/api/posts";
 
 export type BlogSummary = {
     title: string;
     description: string;
-    image: { filePath: string; blurhashDataUrl: string; width: number; height: number };
+    image: string;
     tags: string[];
     url: string;
+    slug: string;
     publishedAt: string;
     updatedAt: string;
     readingTime: string;
+    viewCount: number;
     _id: string;
 };
 
-export function toBlogSummary(blog: Blog): BlogSummary {
+export function toBlogSummary(post: ApiPostSummary): BlogSummary {
     return {
-        title: blog.title,
-        description: blog.description,
-        image: {
-            filePath: blog.image.filePath,
-            blurhashDataUrl: blog.image.blurhashDataUrl,
-            width: blog.image.width,
-            height: blog.image.height,
-        },
-        tags: blog.tags ?? [],
-        url: blog.url,
-        publishedAt: blog.publishedAt,
-        updatedAt: blog.updatedAt,
-        readingTime: blog.readingTime.text,
-        _id: blog._id,
+        title: post.title,
+        description: post.description,
+        image: resolveImageUrl(post.cover_image_url),
+        tags: post.tags,
+        url: `/blogs/${post.slug}`,
+        slug: post.slug,
+        publishedAt: post.published_at,
+        updatedAt: post.updated_at,
+        readingTime: `${post.reading_time_minutes} min read`,
+        viewCount: post.view_count,
+        _id: post.id,
     };
 }

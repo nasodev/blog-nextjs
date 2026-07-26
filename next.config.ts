@@ -6,6 +6,13 @@ const nextConfig: NextConfig = {
     reactStrictMode: true,
     reactCompiler: true,
 
+    images: {
+        remotePatterns: [
+            { protocol: "https", hostname: "api.funq.kr", pathname: "/blog/images/**" },
+            { protocol: "http", hostname: "localhost", port: "28000", pathname: "/blog/images/**" },
+        ],
+    },
+
     async headers() {
         return [
             {

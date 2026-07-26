@@ -1,27 +1,25 @@
 import BlogGridInfinite from "@/components/Blog/BlogGridInfinite";
 import Categories from "@/components/Blog/Categories";
-import { allBlogs } from "contentlayer/generated";
+import { getPublishedPosts } from "@/lib/api/posts";
 import GithubSlugger, { slug } from "github-slugger";
 import { sortBlogs } from "@/utils";
 import { toBlogSummary } from "@/utils/blogData";
 import siteMetaData from "@/utils/siteMetaData";
 
-const slugger = new GithubSlugger();
-
 export async function generateStaticParams() {
+    const posts = await getPublishedPosts();
+    const slugger = new GithubSlugger();
     const categories: string[] = [];
     const paths = [{ slug: "all" }];
 
-    allBlogs.forEach((blog) => {
-        if (blog.isPublished) {
-            blog.tags?.map((tag) => {
-                const slugified = slugger.slug(tag);
-                if (!categories.includes(slugified)) {
-                    categories.push(slugified);
-                    paths.push({ slug: slugified });
-                }
-            });
-        }
+    posts.forEach((post) => {
+        post.tags?.forEach((tag) => {
+            const slugified = slugger.slug(tag);
+            if (!categories.includes(slugified)) {
+                categories.push(slugified);
+                paths.push({ slug: slugified });
+            }
+        });
     });
 
     return paths;
@@ -51,34 +49,31 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 const CategoryPage = async ({ params }: { params: Promise<{ slug: string }> }) => {
     const { slug: categorySlug } = await params;
+    const posts = await getPublishedPosts();
     const allCategories = ["all"];
 
     // 먼저 모든 태그를 수집
-    allBlogs.forEach((blog) => {
-        if (blog.isPublished) {
-            blog.tags?.forEach((tag) => {
-                const slugified = slug(tag);
-                if (!allCategories.includes(slugified)) {
-                    allCategories.push(slugified);
-                }
-            });
-        }
+    posts.forEach((post) => {
+        post.tags?.forEach((tag) => {
+            const slugified = slug(tag);
+            if (!allCategories.includes(slugified)) {
+                allCategories.push(slugified);
+            }
+        });
     });
 
-    const blogs = allBlogs.filter((blog) => {
-        if (!blog.isPublished) return false;
-
+    const filteredPosts = posts.filter((post) => {
         if (categorySlug === "all") {
             return true;
         }
-        return blog.tags?.some((tag) => {
+        return post.tags?.some((tag) => {
             const slugified = slug(tag);
             return slugified === categorySlug;
         });
     });
 
     // 날짜순 정렬
-    const sortedBlogs = sortBlogs(blogs.map(toBlogSummary));
+    const sortedBlogs = sortBlogs(filteredPosts.map(toBlogSummary));
 
     return (
         <article className="mt-12 flex flex-col text-dark dark:text-light">
