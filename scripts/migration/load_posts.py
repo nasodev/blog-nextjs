@@ -8,12 +8,17 @@
 
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.external.database import SessionLocal
 from app.models.blog import BlogPost
 from app.services.blog.content import process_content
+
+# convert.mjs가 내려주는 published_at은 tz 정보 없는 KST 벽시계 문자열이다.
+# 그대로 timestamptz 컬럼에 넣으면 UTC로 오인되어 프론트(KST)에서 +9h 재변환 시
+# 날짜가 하루 밀린다 — 고정 오프셋(KST는 DST 없음)을 명시로 붙여 올바른 UTC 인스턴트로 저장한다.
+KST = timezone(timedelta(hours=9))
 
 
 def load(out_dir: Path) -> None:
@@ -43,7 +48,7 @@ def load(out_dir: Path) -> None:
             post.toc = processed.toc
             post.reading_time_minutes = processed.reading_time_minutes
             post.is_published = meta["is_published"]
-            post.published_at = datetime.fromisoformat(meta["published_at"])
+            post.published_at = datetime.fromisoformat(meta["published_at"]).replace(tzinfo=KST)
             post.updated_at = datetime.utcnow()
             print(f"{'NEW' if is_new else 'UPD'} {meta['slug']}")
 
