@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
     const secret = request.headers.get("x-revalidate-secret");
-    if (!secret || secret !== process.env.REVALIDATE_SECRET) {
+    if (!secret || secret !== (process.env.REVALIDATE_SECRET ?? process.env.NEXT_PUBLIC_REVALIDATE_SECRET)) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
