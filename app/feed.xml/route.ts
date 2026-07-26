@@ -1,12 +1,14 @@
-import { allBlogs } from "contentlayer/generated";
+import { getPublishedPosts } from "@/lib/api/posts";
 import siteMetaData from "@/utils/siteMetaData";
 
-export const dynamic = 'force-static';
-
 export async function GET() {
-    const blogs = allBlogs
-        .filter((blog) => blog.isPublished)
-        .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    const blogs = (await getPublishedPosts()).map((p) => ({
+        title: p.title,
+        description: p.description,
+        author: p.author,
+        publishedAt: p.published_at,
+        url: `/blogs/${p.slug}`,
+    }));
 
     const feedItems = blogs
         .map((blog) => {

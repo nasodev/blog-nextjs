@@ -1,10 +1,16 @@
-import { withContentlayer } from "next-contentlayer2";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
     output: "standalone",
     reactStrictMode: true,
     reactCompiler: true,
+
+    images: {
+        remotePatterns: [
+            { protocol: "https", hostname: "api.funq.kr", pathname: "/blog/images/**" },
+            { protocol: "http", hostname: "localhost", port: "28000", pathname: "/blog/images/**" },
+        ],
+    },
 
     async headers() {
         return [
@@ -40,4 +46,4 @@ const nextConfig: NextConfig = {
     },
 };
 
-export default withContentlayer(nextConfig);
+export default nextConfig;

@@ -18,6 +18,7 @@
 - 변환 HTML은 스펙 §4 규약 준수: `.post-body` 스코프, h2/h3 id(rehype-slug와 동일 규칙), 코드 하이라이팅은 정적 HTML(github-dark)
 - **콘텐츠 동결**: Task 6(프로덕션 적재) 시작부터 Task 7(머지) 완료까지 새 글 작성 금지
 - `content/` 원본은 저장소에 보존 (삭제 금지)
+- **에디터 이미지 URL 주의**: `/admin` 에디터로 본문에 이미지를 삽입하면(`PostEditor.tsx`) 업로드 URL 앞에 그 시점의 `NEXT_PUBLIC_API_URL`을 그대로 붙여 `content_html`에 절대경로로 굽는다 — 로컬 백엔드(`http://localhost:...`)를 띄운 채로 검증·수정하면 localhost URL이 그대로 저장되므로, 마이그레이션 산출물과 이후 에디터 작업은 프로덕션 절대경로(`https://api.funq.kr/blog/images/...`) 또는 사이트에서 서빙되는 경로만 남도록 해야 한다.
 
 ---
 

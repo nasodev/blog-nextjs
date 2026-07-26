@@ -41,9 +41,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# contentlayer
-.contentlayer
-
 # temp
 temp/
 
@@ -56,3 +53,8 @@ node_modules/
 
 # Docker
 docker-compose.override.yml
+
+# content migration script
+scripts/migration/node_modules/
+scripts/migration/out/
+scripts/migration/views.csv

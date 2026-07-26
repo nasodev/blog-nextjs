@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import type Fuse from "fuse.js";
 import Link from "next/link";
 import Image from "next/image";
-import { allBlogs } from "contentlayer/generated";
+import { ApiPostSummary } from "@/lib/api/types";
 import { BlogSummary, toBlogSummary } from "@/utils/blogData";
 import { SearchIcon } from "@/components/icons";
 
@@ -19,8 +19,6 @@ const fuseOptions = {
     includeScore: true,
 };
 
-const searchBlogs = allBlogs.filter((b) => b.isPublished).map(toBlogSummary);
-
 interface SearchResult {
     item: BlogSummary;
     score?: number;
@@ -33,6 +31,7 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
     const fuseRef = useRef<Fuse<BlogSummary> | null>(null);
+    const blogsRef = useRef<BlogSummary[] | null>(null);
 
     const closeModal = useCallback(() => {
         setIsOpen(false);
@@ -59,8 +58,19 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
     const openModal = useCallback(async () => {
         setIsOpen(true);
         if (!fuseRef.current) {
-            const FuseModule = (await import("fuse.js")).default;
-            fuseRef.current = new FuseModule(searchBlogs, fuseOptions);
+            try {
+                const [{ default: Fuse }, res] = await Promise.all([
+                    import("fuse.js"),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/blog/posts?size=1000`),
+                ]);
+                if (!res.ok) throw new Error(`Failed to fetch posts: ${res.status}`);
+                const posts = (await res.json()) as ApiPostSummary[];
+                blogsRef.current = posts.map(toBlogSummary);
+                fuseRef.current = new Fuse(blogsRef.current, fuseOptions);
+            } catch (e) {
+                // 검색 인덱스 로드 실패 — 결과 없음 상태 유지 (검색 기능만 영향, 에러 토스트 불필요)
+                console.error(e);
+            }
         }
         setTimeout(() => inputRef.current?.focus(), 100);
     }, []);
@@ -174,15 +184,13 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
                                                         : "hover:bg-dark/5 dark:hover:bg-light/5"
                                                 }`}
                                             >
-                                                {item.image && (
-                                                    <Image
-                                                        src={item.image.filePath.replace("../public", "")}
-                                                        alt={item.title}
-                                                        width={48}
-                                                        height={48}
-                                                        className="rounded-lg object-cover w-10 h-10 sm:w-14 sm:h-14 flex-shrink-0"
-                                                    />
-                                                )}
+                                                <Image
+                                                    src={item.image}
+                                                    alt={item.title}
+                                                    width={48}
+                                                    height={48}
+                                                    className="rounded-lg object-cover w-10 h-10 sm:w-14 sm:h-14 flex-shrink-0"
+                                                />
                                                 <div className="flex-1 min-w-0">
                                                     <h3 className="font-medium text-dark dark:text-light truncate text-sm sm:text-base">
                                                         {item.title}

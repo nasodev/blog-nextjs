@@ -9,9 +9,9 @@ Next.js 16 기반 기술 블로그 (https://blog.funq.kr)
 | Stack | Technology |
 |-------|------------|
 | Framework | Next.js 16.2.6, React 19, TypeScript |
-| Content | Contentlayer2, MDX, remark-gfm |
+| Content | backend-api `/blog` REST API (tag 기반 on-demand ISR) |
 | Styling | Tailwind CSS, @tailwindcss/typography |
-| Database | Supabase (PostgreSQL) |
+| Admin Auth | Firebase Auth (Google 로그인, funq-auth 프로젝트 공용) |
 | Hosting | Ubuntu Server + Nginx + HTTPS (개인 서버) |
 
 ## Commands
@@ -37,7 +37,7 @@ docker logs -f blog-dev
 npm run dev -- -p 23001
 
 # 기타 명령어
-npm run build     # 프로덕션 빌드 + sitemap 생성
+npm run build     # 프로덕션 빌드 (SSG가 빌드 중 backend-api를 호출 — 아래 Build Notes 참고)
 npm run start     # 프로덕션 서버
 npm run lint      # ESLint
 ```
@@ -54,38 +54,72 @@ npm run lint      # ESLint
 ### Content Pipeline
 
 ```
-content/{slug}/index.mdx → Contentlayer2 빌드 → .contentlayer/generated/
-                                                      ↓
-                                              allBlogs (타입 안전한 데이터)
-                                                      ↓
-                                              app/blogs/[slug]/page.tsx
+/admin (Firebase Google 로그인) → PostEditor (CodeMirror, HTML 본문)
+                                          │
+                                          ▼
+                          backend-api  POST/PUT /blog/posts  (lib/api/admin.ts)
+                                          │
+                                          ▼
+                    requestRevalidate() → POST /api/revalidate → revalidateTag(tag, { expire: 0 })
+                                          │
+                                          ▼
+              lib/api/posts.ts (next: { tags: ["posts"] / [`post:{slug}`] }) ← app/blogs/[slug]/page.tsx 등
 ```
 
-- **Contentlayer2**: 빌드 타임에 MDX → 타입이 있는 JSON 변환
-- **Computed Fields**: `url`, `readingTime`, `toc` 자동 생성 (`contentlayer.config.ts`)
-- **MDX Plugins**: remark-gfm, rehype-slug, rehype-autolink-headings, rehype-pretty-code (github-dark)
+- **글 작성/수정**: MDX가 아니라 `/admin` 에디터에서 HTML 본문을 직접 작성 (`components/Admin/PostEditor.tsx`)
+- **저장 즉시 반영**: 저장/삭제 시 `requestRevalidate(slug)` 호출 → `app/api/revalidate/route.ts`가 공유 시크릿 검증 후 해당 글 태그 + `"posts"` 태그를 즉시 만료
+- **빌드 타임 SSG**: `generateStaticParams()`가 빌드 중 `NEXT_PUBLIC_API_URL`로 전체 글 목록을 fetch — 이후에는 태그 기반 on-demand ISR로 갱신 (재빌드 불필요)
+- **레거시 원본**: `content/{slug}/index.mdx` (21개, Contentlayer 시절 글)는 저장소에 보존되어 있으나 빌드에는 더 이상 쓰이지 않음 — 콘텐츠 마이그레이션 스크립트(`docs/superpowers/plans/2026-07-25-content-migration.md`)가 HTML로 변환해 backend-api DB에 적재할 때까지의 원본 자료
 
 ### Data Flow
 
+**공개 페이지 (읽기)**
 ```
-[Supabase]                    [Contentlayer]
-    │                              │
-    ▼                              ▼
-lib/supabase/api/views.ts    allBlogs (generated)
-    │                              │
-    ▼                              ▼
-ViewCounter.tsx              RenderMdx.tsx (useMDXComponent)
+[backend-api /blog]  --fetch(tags)-->  lib/api/posts.ts  -->  app/page.tsx, app/blogs/[slug]/page.tsx, 카테고리/검색 등
+                                              │
+                                              ▼
+                                    lib/api/views.ts (조회수 POST) ← ViewCounter.tsx (마운트 시 1회)
+```
+
+**관리자 (쓰기)**
+```
+[Firebase Auth]  --Google 로그인-->  lib/firebase.ts  -->  components/Admin/AuthGate.tsx  -->  /admin/*
+                                                                                                    │
+                                                                                                    ▼
+                                                              lib/api/admin.ts (Bearer ID 토큰) → backend-api
 ```
 
 ### Key Integration Points
 
-- **조회수**: `lib/supabase/api/views.ts` - Supabase RPC `increment()` 호출
+- **조회수**: `lib/api/views.ts` - backend-api `POST /blog/posts/{slug}/view` 호출, `ViewCounter.tsx`가 마운트 시 1회 증가
 - **댓글**: `components/Comments/index.tsx` - Giscus (GitHub Discussions)
 - **SEO**: `app/blogs/[slug]/page.tsx` - generateMetadata() + JSON-LD
+- **관리자 에디터**: `/admin` (Firebase Google 로그인 필요, `AuthGate.tsx`) - 글 목록/작성/수정/삭제, CodeMirror 편집 + 초안 로컬 백업 + `/admin/preview` iframe 실시간 프리뷰
+- **온디맨드 재검증**: `app/api/revalidate/route.ts` - `x-revalidate-secret` 헤더 검증 후 `revalidateTag(tag, { expire: 0 })`; 에디터 저장/삭제 시 자동 호출
 
 ## Blog Post Format
 
-### Frontmatter Schema
+### 새 글 작성 (현재 방식)
+
+`/admin`에서 작성 (Google 로그인 필요). 제목/설명/커버 이미지/태그/발행 여부를 입력하고 본문은 CodeMirror로 HTML을 직접 작성 (MDX 아님). 저장 시 backend-api로 전송되고 자동으로 재검증까지 호출됨. 페이로드 형태 (`lib/api/admin.ts`):
+
+```typescript
+interface PostPayload {
+    slug?: string;
+    title?: string;
+    description?: string;
+    content_html?: string;
+    author?: string;
+    cover_image_url?: string | null;
+    tags?: string[];
+    is_published?: boolean;
+    published_at?: string;
+}
+```
+
+### 레거시: `content/` MDX (마이그레이션 대기)
+
+`content/{topic}-{YYYYMMDD}-v01/index.mdx` 형태의 기존 글 21개는 저장소에 보존되어 있으나 Contentlayer 제거 이후 빌드에는 쓰이지 않음. 아래 frontmatter/코드 블록 문법은 **이 레거시 파일에만 해당** — 콘텐츠 마이그레이션 플랜(`docs/superpowers/plans/2026-07-25-content-migration.md`)이 HTML로 변환할 때까지의 원본 참고용.
 
 ```yaml
 ---
@@ -102,7 +136,7 @@ tags:
 ---
 ```
 
-### Code Block Syntax
+코드 블록 (마이그레이션 변환 스크립트가 참고하는 원본 문법):
 
 ```markdown
 ```typescript showLineNumbers {2-4} title="파일명.ts"
@@ -110,13 +144,7 @@ tags:
 ```
 ```
 
-- `showLineNumbers`: 라인 번호 표시
-- `{2-4}`: 2-4번 라인 하이라이팅
-- `title="..."`: 파일명 표시
-
-### 새 글 생성
-
-경로: `content/{topic}-{YYYYMMDD}-v01/index.mdx`
+- `showLineNumbers`: 라인 번호 표시 / `{2-4}`: 라인 하이라이팅 / `title="..."`: 파일명 표시
 
 ## Styling
 
@@ -130,28 +158,26 @@ screens: { xs: "480px", sxl: "1180px" }
 
 Dark mode: `darkMode: "class"`, localStorage 기반
 
-## Supabase
-
-### Views 테이블
-
-```sql
-CREATE TABLE views (
-    slug TEXT PRIMARY KEY,
-    count INTEGER DEFAULT 0
-);
-
-CREATE FUNCTION increment(slug_text TEXT)
-RETURNS void AS $$
-    UPDATE views SET count = count + 1 WHERE slug = slug_text;
-$$ LANGUAGE sql;
-```
-
 ## Environment Variables
 
+전체 목록/설명은 `.env.example` 참고. 로컬 값은 `.env.local`에 설정 (gitignored).
+
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
+# backend-api 베이스 URL — 빌드 타임 인라인 (next.config.ts images.remotePatterns도 함께 확인)
+NEXT_PUBLIC_API_URL=http://localhost:28000      # 로컬. 프로덕션: https://api.funq.kr
+
+# /api/revalidate 보호용 공유 시크릿 — 두 값을 동일하게 설정
+REVALIDATE_SECRET=dev-secret                     # 서버 런타임 전용, build arg 아님
+NEXT_PUBLIC_REVALIDATE_SECRET=dev-secret         # 클라이언트(에디터)가 헤더로 전송
+
+# Firebase Web SDK (funq-auth 프로젝트 공용, /admin Google 로그인)
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+NEXT_PUBLIC_FIREBASE_APP_ID=...
 ```
+
+프로덕션의 `NEXT_PUBLIC_*` 값은 GitHub Actions secrets → Docker build-args로 주입되어 이미지에 인라인됨 (`.github/workflows/deploy.yml`, `Dockerfile`). `REVALIDATE_SECRET`(접두사 없음)만 예외로, build-arg가 아니라 서버의 `~/dev/config/blog-nextjs/.env.prod`에 런타임 값으로 설정.
 
 ## Deployment (개인 서버)
 
@@ -167,8 +193,10 @@ Ubuntu Server
 
 GitHub Actions (`main` 브랜치 push 시 자동 배포):
 1. Lint 검사
-2. Docker 이미지 빌드 → GHCR push
+2. Docker 이미지 빌드 (build-args로 `NEXT_PUBLIC_*` 주입) → GHCR push
 3. SSH로 서버 배포
+
+**필요 GitHub Secrets**: `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `SSH_PORT`, `GHCR_TOKEN`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_REVALIDATE_SECRET`, `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID` (`REVALIDATE_SECRET`은 GitHub Secret이 아니라 서버 `.env.prod`에만 필요 — 아래 서버 초기 설정 참고)
 
 ### 수동 배포
 
@@ -184,15 +212,15 @@ docker compose -f docker-compose.prod.yml up -d
 ./deploy/docker-setup.sh
 ```
 
+`~/dev/config/blog-nextjs/.env.prod` 템플릿을 생성 (없으면). `REVALIDATE_SECRET`은 여기서만 실제로 값이 읽힘 — 나머지 `NEXT_PUBLIC_*` 값은 이미지 빌드 시점에 인라인되므로 이 파일에 적어도 참고용일 뿐, 실제로 바꾸려면 이미지를 재빌드해야 함.
+
 ## Build Notes
 
-- Contentlayer + MDX 빌드는 메모리 집약적 → Vercel 무료티어(1GB) 빌드 실패로 개인 서버 사용
 - `next.config.ts`에 `output: "standalone"` 설정 (Docker 배포용)
-- `next.config.ts`에 `outputFileTracingExcludes` 메모리 최적화 설정
-- SSG: `generateStaticParams()`로 빌드 시 모든 블로그 페이지 정적 생성
-- Next 16 + Turbopack에서는 Contentlayer 생성이 `prebuild`/`predev` 스크립트(one-shot)로 실행됨 —
-  dev 서버 실행 중 MDX 파일을 수정한 경우 dev 서버를 재시작해야 반영됨 (임시 제약: 콘텐츠
-  파이프라인 개편에서 Contentlayer 제거 예정)
+- `next.config.ts`에 `outputFileTracingExcludes` 메모리 최적화 설정 (스탠드얼론 산출물 정리 — Contentlayer 제거 후에도 유지)
+- SSG: `generateStaticParams()`가 빌드 중 backend-api(`NEXT_PUBLIC_API_URL`)를 호출해 모든 블로그/카테고리 페이지를 정적 생성 — 빌드 시점에 API가 응답 가능해야 함 (GitHub Actions 러너 → api.funq.kr 공인 도메인 접근은 문제없음; 로컬에서 `docker build`를 직접 실행할 때도 build-arg로 API URL을 넘기지 않으면 SSG가 실패함에 유의)
+- Contentlayer 제거(Task 10) 이후 빌드는 메모리 집약적이지 않고 API 응답 속도에만 좌우됨 — 이전 Contentlayer+Shiki 조합(수 분, Vercel 무료티어 1GB 빌드 실패 원인) 대비 대폭 단축
+- `NEXT_PUBLIC_*` 환경변수는 빌드 타임에 인라인되므로, 값을 바꾸려면 컨테이너 재시작이 아니라 이미지 재빌드가 필요
 
 ## Project Structure (Docker 관련)
 
