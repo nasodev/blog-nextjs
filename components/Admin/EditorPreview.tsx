@@ -5,7 +5,9 @@ import { useEffect, useRef, useState } from "react";
 const EditorPreview = ({ html }: { html: string }) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [ready, setReady] = useState(false);
-    const [dark, setDark] = useState(false);
+    const [dark, setDark] = useState(
+        () => typeof document !== "undefined" && document.documentElement.classList.contains("dark")
+    );
 
     useEffect(() => {
         const onMessage = (e: MessageEvent) => {
