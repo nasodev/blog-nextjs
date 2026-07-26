@@ -12,7 +12,7 @@ MD 초안을 블로그(blog.funq.kr) 본문 HTML로 변환한다. 출력은 `/ad
 1. **구조**: `<style>` 블록 최대 1개(맨 앞) + 본문 마크업. `<script>` 금지. `<html>/<head>/<body>` 금지.
 2. **CSS 스코프**: 모든 선택자는 `.post-body` 하위로 한정.
    - 올바름: `.post-body .stat-card { ... }`
-   - 금지: `body { ... }`, `h2 { ... }`, `.stat-card { ... }` (스코프 없는 클래스 단독도 금지 아님 — 클래스명은 자유, 선택자에 `.post-body` 접두만 필수)
+   - 금지: `body { ... }`, `h2 { ... }`, `.stat-card { ... }` (클래스명 자체는 자유 — 단, 어떤 선택자든 .post-body 접두 없이 단독 사용은 금지)
 3. **다크모드**: `html.dark` 기반 — `.dark .post-body .stat-card { ... }`. 라이트/다크 모두 검증된 색으로.
 4. **사이트 팔레트**: accent `#7B00D3`, accentDark `#ffdb4d`, dark `#1b1b1b`, light `#fff`. 포인트 컬러는 라이트=accent, 다크=accentDark 사용.
 5. **제목**: 문서 구조는 h2/h3만 사용 (h1은 페이지 타이틀이 별도 렌더됨). 각 h2/h3에 kebab-case `id` 부여 (한글 유지 가능: `id="시작하기"`). id는 TOC와 앵커에 쓰인다.

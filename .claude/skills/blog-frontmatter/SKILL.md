@@ -2,6 +2,8 @@
 description: 블로그 MDX 파일의 frontmatter 검증 및 수정
 ---
 
+> ⚠️ DEPRECATED: MDX 파이프라인 전용. 신규 글은 blog-html 스킬 + /admin 에디터 사용.
+
 # 블로그 Frontmatter 검증기
 
 블로그 MDX 파일의 frontmatter를 Contentlayer2 스키마에 맞게 검증하고 수정합니다.
