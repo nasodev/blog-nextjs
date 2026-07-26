@@ -34,6 +34,8 @@ ENV NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
 ENV NEXT_PUBLIC_FIREBASE_PROJECT_ID=$NEXT_PUBLIC_FIREBASE_PROJECT_ID
 ENV NEXT_PUBLIC_FIREBASE_APP_ID=$NEXT_PUBLIC_FIREBASE_APP_ID
 ENV NEXT_TELEMETRY_DISABLED=1
+# 날짜는 서버 로컬 타임존으로 포맷됨 — KST 고정이 없으면(UTC) 09시 이전 KST 발행 글이 하루 전 날짜로 표시됨
+ENV TZ=Asia/Seoul
 
 RUN npm run build
 
@@ -43,6 +45,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# ISR 재생성 시에도 빌드 타임과 동일한 KST 날짜 포맷 유지
+ENV TZ=Asia/Seoul
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -72,6 +76,7 @@ RUN npm ci
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV TZ=Asia/Seoul
 
 EXPOSE 3000
 
