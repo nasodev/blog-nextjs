@@ -50,6 +50,7 @@ node_modules/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+.playwright-cli/
 
 # Docker
 docker-compose.override.yml
