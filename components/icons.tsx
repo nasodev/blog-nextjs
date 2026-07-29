@@ -81,10 +81,10 @@ export const SunIcon = ({ className = "", ...rest }: SvgComponentProps) => (
         <g
             fill="none"
             stroke="currentColor"
-            stroke-dasharray="2"
-            stroke-dashoffset="2"
-            stroke-linecap="round"
-            stroke-width="2"
+            strokeDasharray="2"
+            strokeDashoffset="2"
+            strokeLinecap="round"
+            strokeWidth="2"
         >
             <path d="M0 0">
                 <animate
@@ -122,7 +122,7 @@ export const SunIcon = ({ className = "", ...rest }: SvgComponentProps) => (
                 <animate fill="freeze" attributeName="fill-opacity" begin="0.2s" dur="0.4s" values="1;0"></animate>
             </path>
         </g>
-        <g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+        <g fill="currentColor" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2">
             <path d="M7 6 C7 12.08 11.92 17 18 17 C18.53 17 19.05 16.96 19.56 16.89 C17.95 19.36 15.17 21 12 21 C7.03 21 3 16.97 3 12 C3 8.83 4.64 6.05 7.11 4.44 C7.04 4.95 7 5.47 7 6 Z"></path>
             <animate attributeName="opacity" begin="0.6s" dur="0.01s" values="1;0" fill="freeze" />
         </g>
@@ -378,10 +378,10 @@ export const InstagramIcon = ({ className = "", ...rest }: SvgComponentProps) =>
                 <path
                     fill="none"
                     stroke="#fff"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-miterlimit="10"
-                    stroke-width="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeMiterlimit="10"
+                    strokeWidth="2"
                     d="M30,11H18c-3.9,0-7,3.1-7,7v12c0,3.9,3.1,7,7,7h12c3.9,0,7-3.1,7-7V18C37,14.1,33.9,11,30,11z"
                 ></path>
                 <circle cx="31" cy="16" r="1" fill="#fff"></circle>
@@ -393,10 +393,10 @@ export const InstagramIcon = ({ className = "", ...rest }: SvgComponentProps) =>
                     r="6"
                     fill="none"
                     stroke="#fff"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-miterlimit="10"
-                    stroke-width="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeMiterlimit="10"
+                    strokeWidth="2"
                 ></circle>
             </g>
         </svg>
