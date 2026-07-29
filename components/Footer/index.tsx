@@ -6,17 +6,17 @@ const Footer = () => {
     return (
         <footer className="mt-16 rounded-2xl bg-dark dark:bg-accentDark/90 m-2 sm:m-10 flex flex-col items-center text-light dark:text-dark">
             <div className="flex items-center mt-8">
-                <Link href={siteMetaData.github} className="inline-block w-6 h-6 mr-4 fill-light">
-                    <GithubIcon className="hover:scale-125 transition-all ease duration-200 fill-light dark:fill-dark" />
+                <Link href={siteMetaData.github} className="inline-block w-6 h-6 mr-4 fill-light" aria-label="GitHub">
+                    <GithubIcon className="hover:scale-125 transition-all ease duration-200 fill-light dark:fill-dark" aria-hidden="true" />
                 </Link>
-                <Link href={siteMetaData.x} className="inline-block w-6 h-6 mr-4">
-                    <XIcon className="hover:scale-125 transition-all ease duration-200 fill-light dark:fill-dark" />
+                <Link href={siteMetaData.x} className="inline-block w-6 h-6 mr-4" aria-label="X">
+                    <XIcon className="hover:scale-125 transition-all ease duration-200 fill-light dark:fill-dark" aria-hidden="true" />
                 </Link>
-                <Link href={siteMetaData.linkedin} className="inline-block w-6 h-6 mr-4">
-                    <LinkedinIcon className="hover:scale-125 transition-all ease duration-200" />
+                <Link href={siteMetaData.linkedin} className="inline-block w-6 h-6 mr-4" aria-label="LinkedIn">
+                    <LinkedinIcon className="hover:scale-125 transition-all ease duration-200" aria-hidden="true" />
                 </Link>
-                <Link href={siteMetaData.instagram} className="inline-block w-6 h-6 mr-4">
-                    <InstagramIcon className="hover:scale-125 transition-all ease duration-200" />
+                <Link href={siteMetaData.instagram} className="inline-block w-6 h-6 mr-4" aria-label="Instagram">
+                    <InstagramIcon className="hover:scale-125 transition-all ease duration-200" aria-hidden="true" />
                 </Link>
             </div>
 

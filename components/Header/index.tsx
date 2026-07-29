@@ -33,7 +33,7 @@ const Header = () => {
     return (
         <header className="w-full p-4 px-5 sm:px-10 flex items-center justify-between">
             <Logo />
-            <button className="inline-block sm:hidden z-50" onClick={handleMenuToggle}>
+            <button className="inline-block sm:hidden z-50" onClick={handleMenuToggle} aria-label={isMenuOpen ? "메뉴 닫기" : "메뉴 열기"}>
                 <div className="w-6 cursor-pointer transition-all ease duration-300">
                     <div className="relative">
                         <span
@@ -74,6 +74,7 @@ const Header = () => {
                 <Search ref={searchRef} />
                 <button
                     onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                    aria-label={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
                     className={`w-6 h-6 ease ml-2 flex items-center justify-center rounded-full p-1 ${
                         theme === "dark" ? "bg-light text-dark" : "bg-dark text-light"
                     }`}
@@ -82,17 +83,17 @@ const Header = () => {
                 </button>
             </nav>
             <div className="sm:flex items-center hidden">
-                <Link href={siteMetaData.github} className="inline-block w-6 h-6 mr-4">
-                    <GithubIcon className="hover:scale-125 transition-all ease duration-200 dark:fill-light" />
+                <Link href={siteMetaData.github} className="inline-block w-6 h-6 mr-4" aria-label="GitHub">
+                    <GithubIcon className="hover:scale-125 transition-all ease duration-200 dark:fill-light" aria-hidden="true" />
                 </Link>
-                <Link href={siteMetaData.x} className="inline-block w-6 h-6 mr-4">
-                    <XIcon className="hover:scale-125 transition-all ease duration-200 dark:fill-light" />
+                <Link href={siteMetaData.x} className="inline-block w-6 h-6 mr-4" aria-label="X">
+                    <XIcon className="hover:scale-125 transition-all ease duration-200 dark:fill-light" aria-hidden="true" />
                 </Link>
-                <Link href={siteMetaData.linkedin} className="inline-block w-6 h-6 mr-4">
-                    <LinkedinIcon className="hover:scale-125 transition-all ease duration-200" />
+                <Link href={siteMetaData.linkedin} className="inline-block w-6 h-6 mr-4" aria-label="LinkedIn">
+                    <LinkedinIcon className="hover:scale-125 transition-all ease duration-200" aria-hidden="true" />
                 </Link>
-                <Link href={siteMetaData.instagram} className="inline-block w-6 h-6 mr-4">
-                    <InstagramIcon className="hover:scale-125 transition-all ease duration-200" />
+                <Link href={siteMetaData.instagram} className="inline-block w-6 h-6 mr-4" aria-label="Instagram">
+                    <InstagramIcon className="hover:scale-125 transition-all ease duration-200" aria-hidden="true" />
                 </Link>
             </div>
         </header>
