@@ -1,0 +1,234 @@
+<style>
+.post-body .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 28px 0; }
+.post-body .metric-card { border: 1px solid #7B00D3; border-radius: 12px; padding: 18px 14px; text-align: center; line-height: 1.4; }
+.post-body .metric-card strong { display: block; font-size: 1.7em; font-weight: 800; color: #7B00D3; margin-bottom: 4px; }
+.post-body .metric-card span { font-size: 0.85em; opacity: 0.75; }
+.dark .post-body .metric-card { border-color: #ffdb4d; }
+.dark .post-body .metric-card strong { color: #ffdb4d; }
+
+.post-body .flow-box { border: 1px solid rgba(123, 0, 211, 0.35); border-radius: 14px; padding: 22px 20px; margin: 28px 0; background: rgba(123, 0, 211, 0.04); }
+.dark .post-body .flow-box { border-color: rgba(255, 219, 77, 0.35); background: rgba(255, 219, 77, 0.06); }
+.post-body .flow-title { font-size: 0.8em; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; color: #7B00D3; margin-bottom: 16px; }
+.dark .post-body .flow-title { color: #ffdb4d; }
+.post-body .flow-steps { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin: 0; padding: 0; list-style: none; }
+.post-body .flow-steps li { flex: 1 1 130px; border: 1px solid rgba(123, 0, 211, 0.3); border-radius: 10px; padding: 12px 10px; text-align: center; font-size: 0.9em; line-height: 1.5; }
+.dark .post-body .flow-steps li { border-color: rgba(255, 219, 77, 0.3); }
+.post-body .flow-steps li b { display: block; font-size: 0.75em; opacity: 0.6; margin-bottom: 4px; font-weight: 700; }
+
+.post-body .layer-stack { margin: 28px 0; }
+.post-body .layer { border-radius: 12px; padding: 16px 18px; margin-bottom: 8px; border: 1px solid rgba(123, 0, 211, 0.3); }
+.dark .post-body .layer { border-color: rgba(255, 219, 77, 0.3); }
+.post-body .layer-top { background: rgba(123, 0, 211, 0.1); }
+.dark .post-body .layer-top { background: rgba(255, 219, 77, 0.12); }
+.post-body .layer-label { font-size: 0.75em; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; opacity: 0.65; margin-bottom: 6px; }
+.post-body .layer-name { font-weight: 700; font-size: 1.05em; margin-bottom: 4px; }
+.post-body .layer-desc { font-size: 0.9em; opacity: 0.8; line-height: 1.6; }
+
+.post-body .table-scroll { overflow-x: auto; margin: 24px 0; -webkit-overflow-scrolling: touch; }
+.post-body .table-scroll table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 0.92em; }
+.post-body .table-scroll th, .post-body .table-scroll td { border: 1px solid rgba(128, 128, 128, 0.3); padding: 10px 12px; text-align: left; vertical-align: top; line-height: 1.6; }
+.post-body .table-scroll th { background: rgba(123, 0, 211, 0.08); font-weight: 700; }
+.dark .post-body .table-scroll th { background: rgba(255, 219, 77, 0.1); }
+
+.post-body .callout { border-left: 4px solid #7B00D3; border-radius: 0 10px 10px 0; padding: 14px 18px; margin: 24px 0; background: rgba(123, 0, 211, 0.05); font-size: 0.95em; line-height: 1.7; }
+.dark .post-body .callout { border-left-color: #ffdb4d; background: rgba(255, 219, 77, 0.07); }
+.post-body .callout strong:first-child { color: #7B00D3; }
+.dark .post-body .callout strong:first-child { color: #ffdb4d; }
+
+.post-body .code-block { background: #24292e; color: #e1e4e8; border-radius: 10px; padding: 16px 18px; overflow-x: auto; margin: 20px 0; font-size: 0.88em; line-height: 1.7; }
+.post-body .code-block code { background: none; padding: 0; color: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+.post-body .verdict-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin: 28px 0; }
+.post-body .verdict-card { border: 1px solid rgba(128, 128, 128, 0.35); border-radius: 12px; padding: 18px; line-height: 1.65; }
+.post-body .verdict-card h4 { margin: 0 0 8px; font-size: 1em; font-weight: 700; }
+.post-body .verdict-yes { border-color: #7B00D3; }
+.dark .post-body .verdict-yes { border-color: #ffdb4d; }
+.post-body .verdict-card p { margin: 0; font-size: 0.92em; opacity: 0.85; }
+</style>
+
+<p>터미널 창 하나에서는 Claude Code가 결제 모듈을 리팩터링하고 있다. 다른 창에서는 Codex가 어제 배포한 기능의 테스트를 짜고 있다. 그리고 세 번째 탭의 에이전트는 10분째 조용하다. 끝난 건지, 막힌 건지, 아니면 내 승인을 기다리는 건지 알 수가 없다.</p>
+
+<p>2026년의 개발자라면 한 번쯤 겪어본 풍경이다. AI 코딩 에이전트는 빠르게 좋아졌는데, 우리가 그것을 <em>여러 개</em> 부리는 방식은 여전히 터미널 탭을 손으로 오가는 수준에 머물러 있다. 최근 GitHub에서 폭발적으로 성장 중인 <strong>Orca</strong>는 바로 이 지점을 겨냥한다. 그리고 스스로를 IDE가 아니라 <strong>ADE(Agent Development Environment)</strong>라는 새 카테고리로 부른다.</p>
+
+<div class="metric-grid">
+  <div class="metric-card"><strong>32.1K</strong><span>GitHub 스타 (2026-07-29)</span></div>
+  <div class="metric-card"><strong>MIT</strong><span>완전 무료 오픈소스</span></div>
+  <div class="metric-card"><strong>25+</strong><span>지원 CLI 에이전트</span></div>
+  <div class="metric-card"><strong>2026.03</strong><span>최초 공개</span></div>
+</div>
+
+<h2 id="ade란-무엇인가">IDE가 아니라 ADE? 새 용어부터 정리하자</h2>
+
+<p>Orca를 만든 곳은 <strong>Stably AI</strong>(법인명 Lovecast Inc.)다. Jinjing Liang과 Neil Parker가 2022년 창업해 같은 해 Y Combinator 윈터 배치를 거친 샌프란시스코 회사로, 원래는 QA 자동화 제품을 만들던 팀이다. Orca는 사실상 이들의 새 승부수에 가깝다.</p>
+
+<p>공식 사이트가 내건 문장은 이렇다. <em>"IDE는 당신을 위해 만들어졌다. ADE는 당신과 당신의 에이전트를 위해 만들어졌다."</em> 그리고 문서 첫 페이지에는 더 직설적인 선언이 있다. <strong>"Not a model. Orca runs agents you already use."</strong></p>
+
+<p>이 한 문장이 Orca를 이해하는 열쇠다. Cursor나 Windsurf, GitHub Copilot은 자체 모델 접근권을 구독에 묶어 파는 <em>통합 제품</em>이다. 반면 Orca는 모델을 팔지 않는다. 자체 인라인 자동완성 기능조차 없다. 대신 당신이 <em>이미 구독 중인</em> Claude Code, Codex, Cursor CLI 같은 에이전트들을 여러 개 동시에 굴리고 관리하는 <strong>지휘소</strong> 역할만 한다.</p>
+
+<div class="callout">
+<strong>이름 주의.</strong> "Orca"라는 이름은 흔하다. 3D 프린팅 슬라이서 OrcaSlicer, GNOME 스크린리더 Orca, Microsoft의 Orca LLM, MacStadium의 macOS 가상화 제품 Orka는 모두 이 글의 Orca와 전혀 무관하다. 이 글이 다루는 것은 <code>github.com/stablyai/orca</code>, 공식 사이트 <code>onorca.dev</code>의 제품이다.
+</div>
+
+<h2 id="worktree-fanout">핵심 원리: git worktree 위에서 에이전트를 펼친다</h2>
+
+<p>여러 에이전트를 한 저장소에 동시에 풀면 무슨 일이 생길까? 같은 파일을 동시에 고치고, 서로의 변경을 덮어쓰고, 브랜치는 엉킨다. 이게 멀티 에이전트의 근본 문제다.</p>
+
+<p>Orca의 해법은 우아할 정도로 단순하다. <strong>모든 태스크에 각자의 git worktree를 준다.</strong> worktree는 같은 저장소의 별도 작업 사본을 디스크에 하나 더 만드는 git 기본 기능이다. 브랜치를 갈아타며 stash를 반복하는 대신, 애초에 물리적으로 분리된 작업 공간을 준다. 공식 문서의 표현을 빌리면 <em>"이것이 병렬 에이전트를 안전하게 만드는 요소다 - 그들은 서로의 파일을 절대 밟지 않는다."</em></p>
+
+<p>여기에 각 worktree마다 전용 에이전트 터미널과 전용 브라우저 탭이 따라붙는다. 그래서 Orca의 전체 워크플로는 이렇게 요약된다.</p>
+
+<div class="flow-box">
+  <div class="flow-title">Orca의 전부 - 공식 문서가 명시한 6단계</div>
+  <ul class="flow-steps">
+    <li><b>1. add</b>태스크 추가</li>
+    <li><b>2. worktree</b>격리 사본 생성</li>
+    <li><b>3. agent</b>에이전트 붙이기</li>
+    <li><b>4. split</b>화면 분할 관찰</li>
+    <li><b>5. diff</b>결과 비교</li>
+    <li><b>6. ship</b>승자 머지</li>
+  </ul>
+</div>
+
+<p>이 흐름에서 가장 인상적인 부분은 4~6단계, 즉 <strong>fan-out과 승자 선택</strong>이다. 같은 프롬프트를 3~5개의 서로 다른 에이전트에게 동시에 던지고, 각자 자기 브랜치에서 문제를 풀게 한 뒤, diff를 나란히 놓고 비교해 가장 좋은 결과만 머지한다. 공식 튜토리얼의 문구가 이 경험을 잘 압축한다. <em>"세 개의 브랜치. 세 개의 diff. 같은 프롬프트."</em></p>
+
+<p>7월에 올라온 한 리뷰 영상은 이 방식의 부수 효과를 흥미롭게 보여준다. 리뷰어는 다섯 개의 에이전트에게 각각 다른 작업을 맡겼는데, 버그에 대해서는 <em>한 명에게만</em> 알려줬다고 한다. 결과적으로 셋이 스스로 그 버그를 찾아냈다. 여러 관점을 병렬로 돌리면 한 관점이 놓친 것을 다른 관점이 잡는다는, 어찌 보면 당연하지만 실제로 굴려보기 전에는 체감하기 어려운 효과다.</p>
+
+<h2 id="지원-에이전트와-비용">지원 에이전트와 진짜 비용 구조</h2>
+
+<p>Orca의 원칙은 명쾌하다. <strong>"터미널에서 돌면 Orca에서 돈다."</strong> 공식 지원 목록에는 Claude Code, Codex, Cursor CLI, Gemini, GitHub Copilot CLI, OpenCode, Grok, Pi 등 25~30종 이상이 올라와 있고, 목록에 없는 커스텀 CLI 에이전트도 직접 추가할 수 있다.</p>
+
+<p>인증은 BYO(bring your own) 방식이다. Orca에는 로그인 자체가 없고, 좌석당 요금도 없다. 앱이 당신의 기존 구독 자격증명을 각 에이전트 CLI에 전달하면, 그 CLI가 자기 제공자의 API를 당신 컴퓨터에서 직접 호출한다. Orca는 그 사이에서 마진을 취하지 않는다.</p>
+
+<p>그래서 가격표가 이렇게 된다.</p>
+
+<div class="table-scroll">
+<table>
+  <thead>
+    <tr><th>항목</th><th>Orca</th><th>Cursor</th><th>Windsurf</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>제품 자체 비용</td><td>무료 (MIT 오픈소스)</td><td>월 $20부터</td><td>월 $15부터</td></tr>
+    <tr><td>모델 접근</td><td>없음 (직접 구독 연결)</td><td>구독에 번들</td><td>구독에 번들</td></tr>
+    <tr><td>실제 지출처</td><td>내 에이전트 구독 (Claude Max 등)</td><td>Cursor 구독</td><td>Windsurf 구독</td></tr>
+    <tr><td>소스 공개</td><td>전체 공개</td><td>비공개</td><td>비공개</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout">
+<strong>"무료"의 함정.</strong> 앱이 공짜라고 총비용이 싸지는 건 아니다. 오히려 반대다. 에이전트 5개를 병렬로 돌리면 구독 토큰도 5배 속도로 녹는다. Reddit의 한 스레드는 이를 두고 병렬 플릿이 <em>"그냥 토큰만 5배 태우는 경우"</em>가 언제인지 짚으면서 가드레일부터 세우라고 조언했고, 설치 가이드 영상 역시 <em>"여러 제공자에 걸친 누적 API 토큰 지출을 능동적으로 모니터링해야 한다"</em>고 경고한다. Orca가 계정별 사용량과 rate limit 리셋 시각을 보여주는 기능을 넣어둔 것도 같은 맥락이다.
+</div>
+
+<h2 id="cursor와의-차이">Cursor·Windsurf와 뭐가 다른가: 경쟁자가 아니라 위층이다</h2>
+
+<p>"Orca는 무료 Cursor 킬러"라는 식의 제목을 여기저기서 볼 수 있다. 트래픽에는 좋을지 몰라도, 제품 구조를 보면 정확한 표현이 아니다. Orca는 Cursor를 <em>대체</em>하는 게 아니라 그 <em>위에</em> 놓이는 레이어에 가깝다. 실제로 Orca는 Cursor CLI를 지원 에이전트 중 하나로 품는다.</p>
+
+<div class="layer-stack">
+  <div class="layer layer-top">
+    <div class="layer-label">오케스트레이션 레이어</div>
+    <div class="layer-name">Orca (ADE)</div>
+    <div class="layer-desc">여러 에이전트를 worktree로 격리해 병렬 실행 · diff 비교 · 승자 머지 · 모델 없음</div>
+  </div>
+  <div class="layer">
+    <div class="layer-label">에이전트 레이어</div>
+    <div class="layer-name">Claude Code · Codex · Cursor CLI · Gemini · OpenCode …</div>
+    <div class="layer-desc">실제로 코드를 읽고 쓰는 주체. 각자의 구독과 모델을 가짐</div>
+  </div>
+  <div class="layer">
+    <div class="layer-label">모델 레이어</div>
+    <div class="layer-name">Anthropic · OpenAI · Google · xAI …</div>
+    <div class="layer-desc">토큰 비용이 실제로 발생하는 곳</div>
+  </div>
+</div>
+
+<p>독립 리뷰어들의 결론도 이 구도를 뒷받침한다. 요지는 이렇다. <strong>"Orca가 이기는 순간은 에이전트를 2개 이상 쓰고 싶을 때다. 에이전트를 하나만 쓰고 그 UI가 마음에 든다면, 거기 머물러라."</strong></p>
+
+<p>바꿔 말하면 Cursor의 인라인 자동완성이나 채팅 패널이 당신 작업의 중심이라면 Orca는 답이 아니다. 공식 문서조차 "단순 자동완성 보조가 필요하면 이 도구는 맞지 않는다"고 못박는다. Orca의 대상은 <em>"10~100개의 코딩 에이전트를 동시에 돌리는 엔지니어"</em>다.</p>
+
+<h2 id="오케스트레이터-비교">같은 판의 경쟁자들: Conductor, cmux, Herdr</h2>
+
+<p>흥미로운 건 이 "에이전트 오케스트레이터"라는 카테고리 자체가 2026년 들어 급격히 붐비고 있다는 점이다. 7월 한 달만 해도 오케스트레이터끼리 비교하는 리뷰 콘텐츠가 하나의 장르처럼 쏟아졌다.</p>
+
+<div class="table-scroll">
+<table>
+  <thead>
+    <tr><th>항목</th><th>Orca</th><th>Conductor</th><th>cmux</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>만든 곳</td><td>Stably AI (YC W22)</td><td>Melty Labs</td><td>오픈소스 커뮤니티</td></tr>
+    <tr><td>플랫폼</td><td>macOS · Windows · Linux + 모바일 · VPS</td><td>macOS 전용</td><td>터미널 (크로스 플랫폼)</td></tr>
+    <tr><td>라이선스</td><td>MIT 오픈소스</td><td>비공개</td><td>오픈소스</td></tr>
+    <tr><td>UI 성격</td><td>에디터형 (파일 에디터 · diff 뷰어 · PR 리뷰 · 무한 분할 터미널)</td><td>워크스페이스 스냅샷 · 롤백 · 머지 리뷰 중심</td><td>터미널 우선, 키보드 중심 경량</td></tr>
+    <tr><td>지원 에이전트</td><td>25종 이상</td><td>Claude Code · Codex</td><td>다중 지원</td></tr>
+    <tr><td>이럴 때 고른다</td><td>오픈소스 · Linux/Windows · 넓은 에이전트 선택지</td><td>체크포인트와 머지 리뷰가 워크플로의 중심일 때</td><td>GUI 없이 가볍게, 키보드만으로</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>여기에 Herdr 같은 신흥 도구도 가세했다. 7월 중순 올라온 "Herdr vs Orca" 비교 영상은 5천 회에 가까운 조회수를 기록했는데, 영상이 던지는 질문이 이 카테고리의 본질을 잘 요약한다. <em>"개발자를 풀타임 관리자로 만들지 않으면서, 어떻게 에이전트 함대에 대한 가시성과 통제권을 줄 것인가?"</em></p>
+
+<p>Orca의 차별점으로 자주 꼽히는 기능은 세 가지다. 첫째, <strong>모바일 컴패니언</strong>. 에이전트가 작업을 끝내면 알림을 받고 폰에서 후속 지시를 보낼 수 있다. 한 일본어 팟캐스트는 <em>"컴퓨터를 닫아도 에이전트가 계속 돈다"</em>는 점을 가장 인상적인 부분으로 꼽았다. 둘째, <strong>Design Mode</strong>. 실제 Chromium 창에서 UI 요소를 클릭하면 그 HTML·CSS·잘라낸 스크린샷이 곧바로 에이전트 프롬프트에 들어간다. 셋째, <strong>SSH 원격 worktree</strong>로 작업을 원격 머신에 태울 수 있다.</p>
+
+<h2 id="설치와-첫-세션">설치하고 5분 안에 3개 에이전트 돌리기</h2>
+
+<p>설치는 간단하다. 다만 <strong>맥 사용자는 함정이 하나 있다.</strong></p>
+
+<pre class="code-block"><code><span style="color:#6a737d"># macOS - 반드시 tap 경로를 명시할 것</span>
+<span style="color:#f97583">brew</span> install --cask stablyai/orca/orca
+
+<span style="color:#6a737d"># Arch Linux (AUR)</span>
+<span style="color:#f97583">yay</span> -S stably-orca-bin</code></pre>
+
+<div class="callout">
+<strong>brew 함정.</strong> <code>brew install --cask orca</code>처럼 tap 없이 짧게 치면 homebrew-cask의 <code>orca</code> cask, 즉 <strong>전혀 무관하고 지원이 끊긴 Plotly Orca</strong>가 설치된다. 이 문제는 저장소 이슈로도 보고됐다. 반드시 <code>stablyai/orca/orca</code> 전체 경로를 쓰거나, 공식 사이트에서 macOS(Apple Silicon/Intel), Windows(.exe), Linux(AppImage) 빌드를 직접 받자.
+</div>
+
+<p>설치 후 공식 문서가 가장 먼저 안내하는 것은 "첫 3-에이전트 세션" 튜토리얼이다. 빈 앱에서 세 개의 에이전트를 병렬로 돌리기까지 5분이 걸리지 않는다고 안내한다. 흐름은 이렇다.</p>
+
+<ol>
+  <li>worktree를 하나 만든다. 새 worktree에 터미널이 열리고, 에이전트 선택 콤보박스에서 Claude Code·Codex·Cursor CLI 등을 고르면 Orca가 올바른 작업 디렉터리로 해당 CLI를 띄우고 구독 자격증명을 전달한다.</li>
+  <li>같은 과정을 두 번 반복해 worktree를 총 세 개 만든다.</li>
+  <li><strong>같은 프롬프트</strong>를 세 에이전트 모두에게 붙여넣는다.</li>
+  <li>worktree 탭을 화면 가장자리로 드래그해 분할하면 세 에이전트를 한 화면에서 지켜볼 수 있다.</li>
+  <li>작업이 끝나면 각 worktree의 diff 뷰를 열어 비교한다. Annotate AI Diff로 인라인 코멘트를 달아 가장 근접한 에이전트에게 되돌려 보낼 수도 있다.</li>
+  <li>Orca에서 바로 커밋·푸시하고, 나머지 두 worktree는 브랜치까지 원클릭으로 정리한다.</li>
+</ol>
+
+<h2 id="커뮤니티-반응과-한계">커뮤니티는 뭐라고 하나, 그리고 무엇을 조심해야 하나</h2>
+
+<p>성장 속도 자체가 이 프로젝트의 가장 큰 뉴스다. 7월 초 한 리뷰 영상은 녹화 시점 기준 "1만 1,100 스타를 넘었다"고 말했는데, 7월 말 현재 저장소의 라이브 수치는 <strong>3만 2,135 스타</strong>다. 한 달 새 세 배 가까이 뛴 셈이다. 릴리스는 거의 매일 나오고, 오픈 이슈는 2,500건을 넘겼다. 리뷰어들은 팀이 Discord에 올라온 기능 요청을 하루 안에 분류한다는 점을 호평한다.</p>
+
+<p>첫인상 반응도 대체로 좋다. "이렇게 좋을 줄 몰랐다", "모든 게 훨씬 쉬워진다" 같은 리뷰 인용이 눈에 띄고, 영상 댓글에도 <em>"설명이 정말 간결하네요. Orca 써보려고요"</em> 같은 반응이 달린다.</p>
+
+<p>다만 균형을 잡자면, 지금 확보 가능한 신호는 대부분 <strong>유튜브 리뷰어와 개인 블로그, 그리고 소규모 Reddit 스레드</strong> 수준이다. Hacker News의 대형 토론이나 대규모 실사용 리포트처럼 비판적 검증이 축적된 자료는 아직 얇다. 신생 도구를 평가할 때 늘 그렇듯, 초기 리뷰의 열광은 할인해서 들을 필요가 있다.</p>
+
+<p>현재까지 반복적으로 지적되는 한계는 세 가지다.</p>
+
+<ul>
+  <li><strong>단일 에이전트 사용자에게는 오버킬이다.</strong> 에이전트를 하나만 쓴다면 Orca가 주는 이점이 거의 없다.</li>
+  <li><strong>비용이 병렬 수만큼 곱해진다.</strong> 토큰 소비도, worktree당 디스크 사용량도 마찬가지다.</li>
+  <li><strong>에이전트 구독이 없으면 빈 껍데기다.</strong> Orca 자체는 아무것도 생성하지 못한다.</li>
+</ul>
+
+<p>마지막으로 재미있는 각주 하나. Reddit의 한 댓글은 MacStadium의 macOS 가상화 제품 <em>Orka</em>와 이름이 겹친다는 점을 지적하며 <em>"저 이름 오래 못 갈 것 같은데"</em>라고 촌평했다. 실제로 이 카테고리에서 이름 충돌은 검색 유입에 꽤 현실적인 문제다.</p>
+
+<h2 id="결론">결론: 당신에게 맞는 도구인가</h2>
+
+<p>Orca를 한 문장으로 요약하면 이렇다. <strong>모델을 팔지 않고, 당신이 이미 가진 에이전트들을 격리된 worktree 위에서 동시에 부리게 해주는 무료 오픈소스 지휘소.</strong></p>
+
+<div class="verdict-grid">
+  <div class="verdict-card verdict-yes">
+    <h4>이런 사람에게 맞다</h4>
+    <p>에이전트를 2개 이상 병렬로 굴리고 싶은 사람. 같은 문제를 여러 모델에 붙여 비교하고 싶은 사람. 벤더 락인이 싫고 Linux/Windows를 쓰는 사람. 이동 중에 에이전트를 지켜보고 싶은 사람.</p>
+  </div>
+  <div class="verdict-card">
+    <h4>이런 사람에겐 아직 이르다</h4>
+    <p>에이전트를 하나만 쓰고 지금 UI에 만족하는 사람. 인라인 자동완성이 작업의 중심인 사람. 토큰 예산이 빠듯한 사람. 안정성이 검증된 성숙한 도구만 쓰는 사람.</p>
+  </div>
+</div>
+
+<p>AI 코딩 도구의 경쟁 축이 "어떤 모델이 더 똑똑한가"에서 "여러 에이전트를 어떻게 관리할 것인가"로 옮겨가고 있다는 신호로 읽으면, Orca는 그 흐름의 가장 선명한 사례다. 관심이 생겼다면 공식 문서의 3-에이전트 튜토리얼로 5분만 투자해보길 권한다. 손에 잡히는 데 그 정도면 충분하다.</p>
+
+<div class="callout">
+<strong>참고.</strong> 이 글의 수치는 2026년 7월 29일 기준이다. Orca는 일일 릴리스 중인 매우 신생 프로젝트라 스타 수, 버전, 지원 에이전트 목록은 빠르게 변한다. 최신 정보는 <code>onorca.dev</code>와 <code>github.com/stablyai/orca</code>에서 확인하자.
+</div>

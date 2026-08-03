@@ -1,0 +1,209 @@
+<style>
+.post-body .okf-callout { border-left: 4px solid #7B00D3; border-radius: 0 12px 12px 0; padding: 14px 18px; margin: 24px 0; background: rgba(123, 0, 211, 0.05); }
+.post-body .okf-callout p { margin: 6px 0; }
+.post-body .okf-callout .callout-label { display: inline-block; font-weight: 700; font-size: 0.85em; letter-spacing: 0.02em; color: #7B00D3; }
+.post-body .okf-callout.ok { border-left-color: #14803c; background: rgba(20, 128, 60, 0.06); }
+.post-body .okf-callout.ok .callout-label { color: #14803c; }
+.post-body .okf-callout.warn { border-left-color: #b45309; background: rgba(180, 83, 9, 0.07); }
+.post-body .okf-callout.warn .callout-label { color: #b45309; }
+.post-body .okf-callout.no { border-left-color: #b91c1c; background: rgba(185, 28, 28, 0.06); }
+.post-body .okf-callout.no .callout-label { color: #b91c1c; }
+.dark .post-body .okf-callout { border-left-color: #ffdb4d; background: rgba(255, 219, 77, 0.07); }
+.dark .post-body .okf-callout .callout-label { color: #ffdb4d; }
+.dark .post-body .okf-callout.ok { border-left-color: #4ade80; background: rgba(74, 222, 128, 0.08); }
+.dark .post-body .okf-callout.ok .callout-label { color: #4ade80; }
+.dark .post-body .okf-callout.warn { border-left-color: #fbbf24; background: rgba(251, 191, 36, 0.08); }
+.dark .post-body .okf-callout.warn .callout-label { color: #fbbf24; }
+.dark .post-body .okf-callout.no { border-left-color: #f87171; background: rgba(248, 113, 113, 0.08); }
+.dark .post-body .okf-callout.no .callout-label { color: #f87171; }
+.post-body .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 24px 0; }
+.post-body .metric-card { border: 1px solid #7B00D3; border-radius: 12px; padding: 16px 12px; text-align: center; font-size: 0.9em; }
+.post-body .metric-card strong { display: block; font-size: 1.7em; color: #7B00D3; margin-bottom: 4px; }
+.dark .post-body .metric-card { border-color: #ffdb4d; }
+.dark .post-body .metric-card strong { color: #ffdb4d; }
+.post-body .tier-ladder { display: flex; gap: 10px; flex-wrap: wrap; margin: 24px 0; align-items: stretch; }
+.post-body .tier-step { flex: 1 1 160px; border: 1px solid rgba(27, 27, 27, 0.25); border-radius: 12px; padding: 14px; text-align: center; font-size: 0.88em; }
+.post-body .tier-step strong { display: block; margin-bottom: 6px; font-size: 1.05em; }
+.post-body .tier-step .tier-cond { display: block; font-size: 0.85em; opacity: 0.75; }
+.post-body .tier-step.tier-top { border: 2px solid #7B00D3; }
+.post-body .tier-step.tier-top strong { color: #7B00D3; }
+.dark .post-body .tier-step { border-color: rgba(255, 255, 255, 0.3); }
+.dark .post-body .tier-step.tier-top { border-color: #ffdb4d; }
+.dark .post-body .tier-step.tier-top strong { color: #ffdb4d; }
+.post-body .code-block { background: #24292e; color: #e1e4e8; padding: 16px 20px; border-radius: 12px; overflow-x: auto; font-size: 0.88em; line-height: 1.65; margin: 20px 0; }
+.post-body .code-block code { background: none; padding: 0; color: inherit; }
+.post-body .table-scroll { overflow-x: auto; margin: 24px 0; }
+.post-body .src-note { font-size: 0.85em; border-top: 1px solid rgba(27, 27, 27, 0.2); margin-top: 40px; padding-top: 16px; opacity: 0.85; }
+.dark .post-body .src-note { border-top-color: rgba(255, 255, 255, 0.25); }
+</style>
+
+<p>구글이 지난 6월 12일 <strong>Open Knowledge Format(OKF)</strong>이라는 스펙을 조용히 공개했습니다. "AI 에이전트에게 조직의 지식을 전달하는 벤더 중립 표준"이라는 소개와 함께요. 그리고 6주 만인 7월 25일, "에이전트가 이 지식을 믿어도 되는가"라는 질문을 정면으로 다룬 v0.2가 나왔습니다.</p>
+
+<p>새 표준이 나오면 소개 글은 쏟아지지만, 마케팅 문구와 스펙 원문이 미묘하게 다른 경우가 많습니다. OKF도 예외가 아니었습니다. 그래서 이 글은 조금 다르게 씁니다. <strong>모든 주장을 스펙 원문(SPEC.md)과 공식 발표 기준으로 교차 검증하고, 검증된 것과 아닌 것에 라벨을 붙여가며</strong> 소개합니다. 지식의 출처와 신뢰를 다루는 표준을 소개하는 글이니, 글 자체도 그렇게 쓰는 게 맞겠지요.</p>
+
+<div class="okf-callout">
+  <span class="callout-label">이 글의 검증 방식</span>
+  <p>2026년 7월 29일 기준으로 스펙 리포(<a href="https://github.com/GoogleCloudPlatform/knowledge-catalog" target="_blank" rel="noopener">GoogleCloudPlatform/knowledge-catalog</a>)의 SPEC.md, Google Cloud 공식 블로그 2건, 관련 커뮤니티 소스를 교차 확인했습니다. 각 섹션의 <strong>✅ 검증됨 / ⚠️ 주의 / ❌ 미검증</strong> 라벨이 그 결과입니다. OKF는 아직 draft(v0.2) 단계라 세부 필드는 바뀔 수 있습니다.</p>
+</div>
+
+<h2 id="okf는-무엇인가">OKF는 무엇인가</h2>
+
+<p>OKF는 조직의 지식 — 메트릭 정의, 테이블 스키마, API, 런북 — 을 <strong>YAML frontmatter가 붙은 마크다운 파일의 디렉토리</strong>로 표현하는 오픈 스펙입니다. 구조 규칙은 세 줄로 요약됩니다.</p>
+
+<ul>
+  <li><strong>파일 하나 = 개념(concept) 하나</strong></li>
+  <li><strong>파일 경로(.md 제거)가 곧 개념의 ID</strong></li>
+  <li><strong>개념 간 관계는 일반 마크다운 링크</strong> — 링크가 쌓이면 디렉토리 전체가 관계 그래프가 됩니다</li>
+</ul>
+
+<p>가장 인상적인 건 스펙의 미니멀리즘입니다. 숫자로 보면 이렇습니다.</p>
+
+<div class="metric-grid">
+  <div class="metric-card"><strong>1개</strong>필수 frontmatter 필드 (type)</div>
+  <div class="metric-card"><strong>0개</strong>스키마 레지스트리·중앙 기관</div>
+  <div class="metric-card"><strong>0개</strong>필수 툴링</div>
+  <div class="metric-card"><strong>6주</strong>v0.1 → v0.2 소요 기간</div>
+</div>
+
+<p>즉, 아래 파일은 그 자체로 완전한(fully conformant) OKF 개념입니다.</p>
+
+<pre class="code-block"><code><span style="color:#6a737d"># runbooks/deploy-rollback.md</span>
+<span style="color:#e1e4e8">---</span>
+<span style="color:#79b8ff">type</span><span style="color:#e1e4e8">: </span><span style="color:#9ecbff">Runbook</span>
+<span style="color:#e1e4e8">---</span>
+<span style="color:#e1e4e8">배포 롤백 절차는 ...</span></code></pre>
+
+<div class="okf-callout ok">
+  <span class="callout-label">✅ 검증됨</span>
+  <p>"필수 필드는 type 하나"는 스펙 원문 그대로입니다. SPEC.md: <em>"There is no schema registry, no central authority, and no required tooling."</em> — §11 conformance 요건도 (1) 파싱 가능한 YAML frontmatter, (2) 비어있지 않은 <code>type</code>, 딱 두 가지입니다. <code>title</code>·<code>description</code>·<code>tags</code>는 권장 사항일 뿐이고, type 값조차 중앙에 등록하지 않습니다.</p>
+</div>
+
+<h2 id="구글도-새롭지-않다는-걸-안다">구글도 "새롭지 않다"는 걸 안다</h2>
+
+<p>"마크다운에 frontmatter 붙인 게 뭐가 새롭냐, Obsidian이랑 뭐가 다르냐" — OKF 발표 직후 커뮤니티에서 가장 많이 나온 반응입니다. 흥미로운 건, <strong>이 지적을 구글 스스로 출시 블로그에서 먼저 하고 있다</strong>는 점입니다.</p>
+
+<blockquote>
+  <p>"Similar knowledge-as-Wiki pattern keeps reappearing under different names: Obsidian vaults wired to coding agents, the AGENTS.md / CLAUDE.md family of convention files ... each instance is bespoke. <strong>OKF formalizes the small set of conventions needed to make these patterns interoperable.</strong>"<br />— Google Cloud 출시 블로그</p>
+</blockquote>
+
+<p>출시 블로그는 Karpathy의 LLM Wiki 아이디어를 직접 링크하며 OKF를 "LLM-wiki 패턴의 형식화"로 정의합니다. 즉 가치 제안은 처음부터 <strong>기술적 신규성이 아니라 상호운용 표준화</strong>입니다. 에이전트마다, 회사마다 제각각(bespoke)으로 만들던 "마크다운 지식 폴더"에 공통 규약을 씌워 이식 가능하게 만들자는 것.</p>
+
+<div class="okf-callout ok">
+  <span class="callout-label">✅ 검증됨</span>
+  <p>"Karpathy LLM 위키에 대한 구글의 답"이라는 프레임은 커뮤니티가 만든 게 아니라 <strong>구글 자신의 런칭 메시지</strong>(블로그 + 공식 트윗)에서 나왔습니다. 그래서 논쟁의 실제 축은 "형식이 새로운가"가 아니라 <strong>"구글이 미는 공통 표준이 필요한가"</strong>로 보는 게 정확합니다.</p>
+</div>
+
+<h2 id="v02-이-지식을-믿어도-되는가">v0.2 — "이 지식을 믿어도 되는가"</h2>
+
+<p>v0.1이 지식을 <em>표현하는</em> 규약이었다면, v0.2의 주제는 <strong>신뢰</strong>입니다. 에이전트가 어떤 개념 파일을 읽을 때 판단해야 할 것들 — 구글 블로그는 이를 다섯 가지 질문으로 정리합니다: 무엇으로부터 만들어졌나(provenance), 얼마나 믿을 수 있나(trust), 아직 유효한가(freshness), 최신 버전인가(lifecycle), 약속된 방식으로 계산됐나(attestation).</p>
+
+<div class="okf-callout warn">
+  <span class="callout-label">⚠️ 주의 — 마케팅과 스펙의 간극</span>
+  <p>많은 소개 글이 이 "다섯 질문"을 스펙에 다섯 가지 신호 계열이 추가된 것처럼 옮기는데, <strong>스펙의 실제 구조는 4개 family</strong>(trust / lifecycle / provenance / computation)입니다. freshness는 독립 계열이 아니라 lifecycle에 속한 <code>stale_after</code> 필드 하나이고, attestation은 frontmatter 계열이 아니라 별도의 concept type(<code>Attested Computation</code>, §10)으로 구현됐습니다. 블로그의 "다섯 질문"은 소비자 관점의 프레이밍, 스펙의 "네 family"는 실제 데이터 구조 — 이 구분을 알고 읽으면 스펙이 훨씬 깔끔하게 보입니다.</p>
+</div>
+
+<h3 id="실제-필드-구조">실제 필드 구조</h3>
+
+<p>v0.2 frontmatter를 스펙 예시 기반으로 재구성하면 이렇습니다.</p>
+
+<pre class="code-block"><code><span style="color:#e1e4e8">---</span>
+<span style="color:#79b8ff">type</span><span style="color:#e1e4e8">: </span><span style="color:#9ecbff">Metric</span>
+<span style="color:#79b8ff">title</span><span style="color:#e1e4e8">: </span><span style="color:#9ecbff">Quarterly Revenue</span>
+<span style="color:#79b8ff">generated</span><span style="color:#e1e4e8">:            </span><span style="color:#6a737d"># 누가·언제 만들었나</span>
+<span style="color:#79b8ff">  by</span><span style="color:#e1e4e8">: </span><span style="color:#9ecbff">reference_agent/gemini-2.5-pro</span>
+<span style="color:#79b8ff">  at</span><span style="color:#e1e4e8">: </span><span style="color:#9ecbff">2026-06-20T22:53:05Z</span>
+<span style="color:#79b8ff">verified</span><span style="color:#e1e4e8">:             </span><span style="color:#6a737d"># 누가·언제 검증했나 (작성자와 별개)</span>
+<span style="color:#e1e4e8">  - </span><span style="color:#79b8ff">by</span><span style="color:#e1e4e8">: </span><span style="color:#9ecbff">human:ahormati</span>
+<span style="color:#79b8ff">    at</span><span style="color:#e1e4e8">: </span><span style="color:#9ecbff">2026-06-25T09:00:00Z</span>
+<span style="color:#79b8ff">sources</span><span style="color:#e1e4e8">:              </span><span style="color:#6a737d"># 출처 — 엔트리당 필수는 resource 하나</span>
+<span style="color:#e1e4e8">  - </span><span style="color:#79b8ff">id</span><span style="color:#e1e4e8">: </span><span style="color:#9ecbff">rev-policy</span>
+<span style="color:#79b8ff">    resource</span><span style="color:#e1e4e8">: </span><span style="color:#9ecbff">https://wiki.acme/finance/revenue-recognition</span>
+<span style="color:#79b8ff">status</span><span style="color:#e1e4e8">: </span><span style="color:#9ecbff">stable</span><span style="color:#e1e4e8">        </span><span style="color:#6a737d"># draft | stable | deprecated (생략 시 stable)</span>
+<span style="color:#79b8ff">stale_after</span><span style="color:#e1e4e8">: </span><span style="color:#9ecbff">2026-12-31</span><span style="color:#e1e4e8">  </span><span style="color:#6a737d"># 이 날짜가 지나면 stale</span>
+<span style="color:#e1e4e8">---</span></code></pre>
+
+<p>설계에서 눈에 띄는 디테일 두 가지:</p>
+
+<ul>
+  <li><strong><code>generated</code>와 <code>verified</code>의 의도적 분리</strong> — 공식 블로그 표현으로 "누가 썼는지와 누가 확인했는지는 같은 주체일 필요가 없기 때문"입니다. AI가 만들고 사람이 검증하는 파이프라인이 필드 구조에 그대로 반영돼 있습니다.</li>
+  <li><strong>actor 표기 규약(§7)</strong> — 에이전트·툴은 <code>reference_agent/gemini-2.5-pro</code>처럼 producer/version으로, 사람은 <code>human:ahormati</code>처럼 <code>human:</code> 접두사로 씁니다. 이 접두사가 아래 신뢰 등급 판정의 열쇠입니다.</li>
+</ul>
+
+<h3 id="신뢰-3단계">신뢰 3단계 — 기계가 판독 가능한 trust tier</h3>
+
+<p>소비자(대개 다른 에이전트)는 <code>verified</code> 필드만 보고 개념의 신뢰 등급을 셋 중 하나로 도출합니다.</p>
+
+<div class="tier-ladder">
+  <div class="tier-step"><strong>unverified</strong><span class="tier-cond">verified 키 없음</span></div>
+  <div class="tier-step"><strong>machine-confirmed</strong><span class="tier-cond">기계 actor만 검증</span></div>
+  <div class="tier-step tier-top"><strong>human-reviewed</strong><span class="tier-cond">human: actor 검증 존재</span></div>
+</div>
+
+<div class="okf-callout ok">
+  <span class="callout-label">✅ 검증됨</span>
+  <p>SPEC.md §5.3 원문 규칙 그대로입니다. actor 문자열의 <code>human:</code> 접두사 유무로 판정하므로 파서 입장에서 완전히 기계 판독 가능합니다. 참고로 리포 README 요약은 generated까지 보는 듯 쓰여 있지만, 규범 텍스트(스펙)는 <code>verified</code> 단독 기준입니다.</p>
+</div>
+
+<h3 id="하위-호환">하위 호환 — rename은 딱 2개</h3>
+
+<p>v0.2는 additive한 마이너 범프로, 의도적 rename은 정확히 두 개뿐입니다: v0.1의 <code>timestamp</code> → <code>generated.at</code>, 본문의 <code># Citations</code> 리스트 → <code>sources</code> frontmatter. 스펙 표현을 빌리면 <em>"A v0.1 bundle drops in unchanged."</em> — 기존 번들은 수정 없이 그대로 동작합니다.</p>
+
+<h2 id="agentsmd-claudemd와의-관계">AGENTS.md·CLAUDE.md와는 무슨 관계인가</h2>
+
+<p>Claude Code나 기타 코딩 에이전트를 쓰고 있다면 이미 CLAUDE.md·AGENTS.md 같은 컨벤션 파일로 에이전트에게 컨텍스트를 주고 있을 겁니다. OKF는 이걸 대체하나요? 커뮤니티 FAQ의 정리가 깔끔합니다.</p>
+
+<blockquote>
+  <p>"AGENTS.md tells an agent <strong>how to behave</strong>. OKF tells an agent <strong>what exists</strong> in the world. They're friends, not competitors."</p>
+</blockquote>
+
+<div class="table-scroll">
+  <table>
+    <thead>
+      <tr><th></th><th>AGENTS.md / CLAUDE.md</th><th>OKF 번들</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>역할</td><td>"이렇게 행동해라" (지시)</td><td>"우리가 아는 것은 이것이다" (지식)</td></tr>
+      <tr><td>스코프</td><td>리포·에이전트 하나</td><td>조직 전체 지식, 리포·툴 간 이동 가능</td></tr>
+      <tr><td>조합 패턴</td><td colspan="2">AGENTS.md가 "도메인 컨텍스트는 /knowledge의 OKF 번들을 참조하라"고 지시</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="okf-callout warn">
+  <span class="callout-label">⚠️ 출처 주의</span>
+  <p>위 비교 프레임의 출처인 okf.md FAQ는 <strong>구글 공식이 아니라 개인이 운영하는 커뮤니티 사이트</strong>이고, 아직 v0.1 기준이라 trust 필드를 반영하지 못하고 있습니다. 프레임 자체는 유용하지만 "공식 입장"으로 인용하면 안 됩니다. 다만 구글 출시 블로그가 AGENTS.md/CLAUDE.md를 "같은 패턴의 인스턴스"로 명시한 것(위 섹션)은 공식 1차 출처가 맞습니다.</p>
+</div>
+
+<h2 id="벡터db를-버려라">"벡터DB를 버려라"? — 그 얘기는 스펙에 없다</h2>
+
+<p>OKF를 타고 "벡터DB+RAG를 버리고 마크다운 링크 그래프로 회귀하자"는 내러티브가 커뮤니티에 퍼지고 있습니다. 유사도 근사 검색 대신 명시적 링크를 따라가면 임베딩 비용도, 환각 위험도 없다는 주장입니다.</p>
+
+<div class="okf-callout no">
+  <span class="callout-label">❌ 미검증 — 커뮤니티발 내러티브</span>
+  <p>이번 검증에서 <strong>공식 스펙이나 구글 블로그 어디에서도 벡터DB/RAG 대비 포지션을 밝힌 근거를 찾지 못했습니다.</strong> "OKF vs RAG" 대립 구도는 전적으로 커뮤니티 해석입니다. 상식적으로 보더라도 안정적인 조직 사실(메트릭 정의, 런북)은 직접 읽기에 적합하고, 대량 코퍼스에 대한 탐색적 질의는 여전히 검색이 필요하므로 둘은 배타적이지 않습니다. "벡터DB의 종말" 류 제목에는 거리를 두시길.</p>
+</div>
+
+<h2 id="생태계와-반응">생태계와 반응</h2>
+
+<p>출시 6주 시점의 생태계치고는 움직임이 빠릅니다. 스펙 리포는 약 8K 스타를 모았고, HN에는 런칭과 v0.2 발표 스레드가 모두 올라와 활발한 논쟁이 이어졌습니다. 서드파티 툴 중에서는 루비 생태계의 <a href="https://github.com/serradura/okf-gem" target="_blank" rel="noopener">serradura/okf-gem</a>이 대표적인데, 저작(agent skill)·스펙 검증·린트(CI용 exit code)·전문 검색·지식그래프 시각화에 Claude Code 플러그인까지 gem 하나에 담았고 100% 로컬로 동작합니다.</p>
+
+<div class="okf-callout warn">
+  <span class="callout-label">⚠️ 반응 온도는 직접 확인을</span>
+  <p>커뮤니티 반응을 "냉소 우세"로 요약하는 2차 소스가 많지만, 개별 인용문과 분위기 분포까지는 이번 검증 범위에서 확정하지 못했습니다. 논쟁의 축이 "형식의 신규성"이 아니라 "구글 주도 표준의 필요성"이라는 것까지가 검증 가능한 선입니다. 원 스레드(<a href="https://news.ycombinator.com/item?id=48517735" target="_blank" rel="noopener">런칭</a>, <a href="https://news.ycombinator.com/item?id=48643541" target="_blank" rel="noopener">v0.2</a>)를 직접 읽어보시길 권합니다.</p>
+</div>
+
+<h2 id="정리-지금-써볼-만한가">정리 — 지금 써볼 만한가</h2>
+
+<p>제 판단은 이렇습니다.</p>
+
+<ul>
+  <li><strong>도입 비용이 사실상 0입니다.</strong> 이미 마크다운으로 문서를 쓰고 있다면 frontmatter에 <code>type</code> 한 줄 얹는 것부터 시작할 수 있고, 전부 git으로 버전 관리됩니다. 스펙이 폐기돼도 남는 건 잘 정리된 마크다운 폴더입니다 — 잃을 게 없습니다.</li>
+  <li><strong>v0.2의 진짜 기여는 신뢰 메타데이터의 표준화입니다.</strong> "AI가 생성 → 사람이 검증 → 유효기간 명시"라는 파이프라인을 세 필드(<code>generated</code>/<code>verified</code>/<code>stale_after</code>)로 기계 판독 가능하게 만든 건, 에이전트가 서로의 산출물을 소비하는 시대에 실용적인 설계입니다.</li>
+  <li><strong>단, 아직 draft입니다.</strong> v0.1→v0.2에서 rename이 있었듯 필드는 더 바뀔 수 있습니다. 조직 표준으로 강제하기보다, 에이전트가 읽는 지식 폴더 하나에 실험적으로 적용해보는 정도가 지금 시점의 적정선으로 보입니다.</li>
+</ul>
+
+<p>개인적으로는 Claude Code의 메모리 디렉토리와 CLAUDE.md를 이미 쓰고 있는 입장에서, "행동은 CLAUDE.md, 지식은 OKF 번들"이라는 분업 구도를 사이드 프로젝트에 실험해볼 생각입니다. 결과가 쌓이면 후속 글로 공유하겠습니다.</p>
+
+<div class="src-note">
+  <p><strong>검증 노트</strong> — 이 글의 사실 확인은 2026-07-29 기준이며, 딥리서치 파이프라인으로 21개 소스에서 추출한 주장 중 상위 25건을 3표 교차 검증해 22건 확정·3건 기각한 결과를 반영했습니다. 1차 출처: <a href="https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md" target="_blank" rel="noopener">OKF SPEC.md</a> · <a href="https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing" target="_blank" rel="noopener">출시 블로그</a> · <a href="https://cloud.google.com/blog/products/data-analytics/okf-v0-2-adds-trust-signals" target="_blank" rel="noopener">v0.2 블로그</a>. OKF는 draft 단계이므로 실제 도입 전 스펙 원문을 재확인하세요.</p>
+</div>
