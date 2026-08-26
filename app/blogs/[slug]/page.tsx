@@ -1,11 +1,15 @@
 import BlogDetails from "@/components/Blog/BlogDetails";
+import BlogLayoutThree from "@/components/Blog/BlogLayoutThree";
 import PostBody from "@/components/Blog/PostBody";
 import Tag from "@/components/Elements/tag";
+import TagList from "@/components/Elements/TagList";
 import Comments from "@/components/Comments";
 import { slug as slugify } from "github-slugger";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import siteMetaData from "@/utils/siteMetaData";
+import { sortBlogs } from "@/utils";
 import { getPost, getPublishedPosts, resolveImageUrl } from "@/lib/api/posts";
 import { toBlogSummary } from "@/utils/blogData";
 
@@ -33,7 +37,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     return {
         title: post.title,
         description: post.description,
-        alternates: { canonical: `/blogs/${post.slug}` },
+        alternates: {
+            canonical: `/blogs/${post.slug}`,
+            // alternates는 layout 값을 통째로 대체하므로 RSS 자동발견 링크를 함께 재선언
+            types: { "application/rss+xml": "/feed.xml" },
+        },
         openGraph: {
             title: post.title,
             description: post.description,
@@ -57,24 +65,68 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function BlogPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
-    const post = await getPost(slug);
+    const [post, allPosts] = await Promise.all([getPost(slug), getPublishedPosts()]);
     if (!post) notFound();
 
+    // 내부 링크(이전/다음 글, 관련 글) — 목록은 "posts" 태그 캐시를 재사용하므로 추가 API 부담 없음
+    const sortedBlogs = sortBlogs(allPosts.map(toBlogSummary));
+    const currentIndex = sortedBlogs.findIndex((blog) => blog.slug === slug);
+    const newerPost = currentIndex > 0 ? sortedBlogs[currentIndex - 1] : null;
+    const olderPost = currentIndex >= 0 && currentIndex < sortedBlogs.length - 1 ? sortedBlogs[currentIndex + 1] : null;
+
+    const tagSlugs = new Set(post.tags.map((tag) => slugify(tag)));
+    const scoredBySharedTags = sortedBlogs
+        .filter((blog) => blog.slug !== slug)
+        .map((blog) => ({ blog, score: blog.tags.filter((tag) => tagSlugs.has(slugify(tag))).length }))
+        .sort((a, b) => b.score - a.score);
+    const relatedBlogs = (
+        scoredBySharedTags[0]?.score
+            ? scoredBySharedTags.filter(({ score }) => score > 0)
+            : scoredBySharedTags
+    )
+        .slice(0, 3)
+        .map(({ blog }) => blog);
+
     const imageUrl = resolveImageUrl(post.cover_image_url);
+    const postUrl = `${siteMetaData.siteUrl}/blogs/${post.slug}`;
     const jsonLd = {
         "@context": "https://schema.org",
-        "@type": "NewsArticle",
+        "@type": "BlogPosting",
         headline: post.title,
         description: post.description,
         image: [imageUrl.startsWith("http") ? imageUrl : siteMetaData.siteUrl + imageUrl],
         datePublished: new Date(post.published_at).toISOString(),
         dateModified: new Date(post.updated_at).toISOString(),
-        author: [{ "@type": "Person", name: [post.author], url: `${siteMetaData.siteUrl}/blogs/${post.slug}` }],
+        url: postUrl,
+        mainEntityOfPage: { "@type": "WebPage", "@id": postUrl },
+        author: { "@type": "Person", name: post.author, url: `${siteMetaData.siteUrl}/about` },
+        publisher: {
+            "@type": "Organization",
+            name: siteMetaData.title,
+            logo: { "@type": "ImageObject", url: siteMetaData.siteUrl + siteMetaData.siteLogo },
+        },
+        inLanguage: "ko-KR",
+        keywords: post.tags.join(", "),
+    };
+    const breadcrumbJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: siteMetaData.siteUrl },
+            {
+                "@type": "ListItem",
+                position: 2,
+                name: post.tags[0] ?? "uncategorized",
+                item: `${siteMetaData.siteUrl}/categories/${post.tags[0] ? slugify(post.tags[0]) : "uncategorized"}`,
+            },
+            { "@type": "ListItem", position: 3, name: post.title },
+        ],
     };
 
     return (
         <section>
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
             <article>
                 <div className="mb-8 text-center relative w-full h-[70vh] bg-dark">
                     <div className="w-full z-10 flex flex-col items-center justify-center absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -99,6 +151,11 @@ export default async function BlogPage({ params }: { params: Promise<{ slug: str
                     />
                 </div>
                 <BlogDetails blog={toBlogSummary(post)} slug={slug} />
+                {post.tags.length > 1 && (
+                    <div className="mx-5 md:mx-10 mt-4">
+                        <TagList tags={post.tags} />
+                    </div>
+                )}
                 <div className="grid grid-cols-12 gap-y-8 lg:gap-8 sxl:gap-16 mt-8 px-5 md:px-10">
                     <div className="col-span-12 md:col-span-3">
                         <details className="border-[1px] border-solid border-dark dark:border-light text-dark dark:text-light rounded-lg p-4 sticky top-6 max-h-[80vh] overflow-hidden overflow-y-auto">
@@ -127,6 +184,46 @@ export default async function BlogPage({ params }: { params: Promise<{ slug: str
                     </div>
                     <PostBody html={post.content_html} />
                 </div>
+                {(olderPost || newerPost) && (
+                    <nav aria-label="이전/다음 글" className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-12 px-5 md:px-10">
+                        {olderPost ? (
+                            <Link
+                                href={olderPost.url}
+                                className="group flex flex-col p-4 border border-solid border-dark/20 dark:border-light/20 rounded-lg hover:border-accent dark:hover:border-accentDark transition-colors"
+                            >
+                                <span className="text-sm text-gray dark:text-light/50">← 이전 글</span>
+                                <span className="mt-1 font-semibold text-dark dark:text-light group-hover:text-accent dark:group-hover:text-accentDark">
+                                    {olderPost.title}
+                                </span>
+                            </Link>
+                        ) : (
+                            <span />
+                        )}
+                        {newerPost && (
+                            <Link
+                                href={newerPost.url}
+                                className="group flex flex-col p-4 text-right border border-solid border-dark/20 dark:border-light/20 rounded-lg hover:border-accent dark:hover:border-accentDark transition-colors"
+                            >
+                                <span className="text-sm text-gray dark:text-light/50">다음 글 →</span>
+                                <span className="mt-1 font-semibold text-dark dark:text-light group-hover:text-accent dark:group-hover:text-accentDark">
+                                    {newerPost.title}
+                                </span>
+                            </Link>
+                        )}
+                    </nav>
+                )}
+                {relatedBlogs.length > 0 && (
+                    <section className="mt-16 px-5 md:px-10">
+                        <h2 className="font-semibold text-2xl md:text-3xl text-dark dark:text-light">관련 글</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-16 mt-8">
+                            {relatedBlogs.map((blog) => (
+                                <article key={blog.slug} className="col-span-1 relative">
+                                    <BlogLayoutThree blog={blog} />
+                                </article>
+                            ))}
+                        </div>
+                    </section>
+                )}
                 <div className="px-5 md:px-10">
                     <Comments slug={slug} />
                 </div>

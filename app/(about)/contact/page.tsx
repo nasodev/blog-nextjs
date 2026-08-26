@@ -2,11 +2,23 @@ import LottieAnimation from "@/components/Contact/LottieAnimation";
 import ContactForm from "@/components/Contact/ContactForm";
 import siteMetaData from "@/utils/siteMetaData";
 
+const contactDescription = `${siteMetaData.title}에 프로젝트 문의와 협업 제안을 보낼 수 있는 연락 페이지입니다.`;
+
 export const metadata = {
     title: "Contact Me",
-    description: `Contact me through the form or email me at ${siteMetaData.email}`,
+    description: contactDescription,
     alternates: {
         canonical: "/contact",
+        types: { "application/rss+xml": "/feed.xml" },
+    },
+    openGraph: {
+        title: `Contact Me | ${siteMetaData.title}`,
+        description: contactDescription,
+        url: `${siteMetaData.siteUrl}/contact`,
+        siteName: siteMetaData.title,
+        locale: siteMetaData.locale,
+        type: "website",
+        images: [{ url: siteMetaData.siteUrl + siteMetaData.socialBanner, width: 1200, height: 630 }],
     },
 };
 

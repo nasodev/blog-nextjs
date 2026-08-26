@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     reactCompiler: true,
 
     images: {
+        formats: ["image/avif", "image/webp"],
         remotePatterns: [
             { protocol: "https", hostname: "api.funq.kr", pathname: "/blog/images/**" },
             { protocol: "http", hostname: "localhost", port: "28000", pathname: "/blog/images/**" },

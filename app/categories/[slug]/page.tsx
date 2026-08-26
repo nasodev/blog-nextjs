@@ -37,11 +37,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         description,
         alternates: {
             canonical: `/categories/${slug}`,
+            // alternates는 layout 값을 통째로 대체하므로 RSS 자동발견 링크를 함께 재선언
+            types: { "application/rss+xml": "/feed.xml" },
         },
+        // openGraph도 layout 값을 통째로 대체하므로 images/siteName/locale/type까지 채운다
         openGraph: {
             title: `${title} | ${siteMetaData.title}`,
             description,
             url: `${siteMetaData.siteUrl}/categories/${slug}`,
+            siteName: siteMetaData.title,
+            locale: siteMetaData.locale,
+            type: "website",
+            images: [{ url: siteMetaData.siteUrl + siteMetaData.socialBanner, width: 1200, height: 630 }],
         },
     };
 }

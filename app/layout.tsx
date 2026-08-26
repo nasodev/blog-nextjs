@@ -4,7 +4,6 @@ import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import Script from "next/script";
 import siteMetaData from "@/utils/siteMetaData";
 
 const inter = Inter({
@@ -52,13 +51,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return (
         <html lang="ko">
             <body className={cx(inter.variable, manrope.variable, "font-mr bg-light dark:bg-dark")}>
-                <Script id="theme-script">
-                    {`if (localStorage.getItem("theme") === "dark" || (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
-                        document.documentElement.classList.add("dark");
-                    } else {
-                        document.documentElement.classList.remove("dark");
-                    }`}
-                </Script>
+                {/* FOUC 방지용 동기 인라인 스크립트 — next/script는 App Router에서
+                    beforeInteractive여도 프레임워크 부트스트랩 이후에 실행되므로 쓰지 않는다 */}
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `try{if(localStorage.getItem("theme")==="dark"||(!("theme" in localStorage)&&window.matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark")}else{document.documentElement.classList.remove("dark")}}catch(e){}`,
+                    }}
+                />
                 <Header />
                 {children}
                 <Footer />

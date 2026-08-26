@@ -16,7 +16,10 @@ export function useInfiniteScroll<T>({
     items,
     itemsPerPage,
 }: UseInfiniteScrollOptions<T>): UseInfiniteScrollReturn<T> {
-    const [displayCount, setDisplayCount] = useState(itemsPerPage);
+    // 초기값을 전체 개수로 두어 모든 카드가 서버 HTML에 포함되게 한다 —
+    // itemsPerPage로 시작하면 크롤러가 처음 N개 글 링크만 볼 수 있다(SEO).
+    // 글이 수백 개 규모로 늘면 실제 페이지네이션(<a href> 링크)으로 전환할 것.
+    const [displayCount, setDisplayCount] = useState(items.length);
     const [isLoading, setIsLoading] = useState(false);
     const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -26,7 +29,7 @@ export function useInfiniteScroll<T>({
     const [prevItems, setPrevItems] = useState(items);
     if (items !== prevItems) {
         setPrevItems(items);
-        setDisplayCount(itemsPerPage);
+        setDisplayCount(items.length);
     }
 
     const displayedItems = items.slice(0, displayCount);

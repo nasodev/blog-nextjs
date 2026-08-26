@@ -3,11 +3,24 @@ import Skills from "@/components/About/Skills";
 import Link from "next/link";
 import siteMetaData from "@/utils/siteMetaData";
 
+const aboutDescription =
+    "AI 도구와 LLM을 활용해 개발 생산성을 높이는 개발자 funqdev의 소개 페이지입니다. 기술 스택과 프로젝트 경험을 확인해보세요.";
+
 export const metadata = {
     title: "About Me",
-    description: `About me page of ${siteMetaData.title}`,
+    description: aboutDescription,
     alternates: {
         canonical: "/about",
+        types: { "application/rss+xml": "/feed.xml" },
+    },
+    openGraph: {
+        title: `About Me | ${siteMetaData.title}`,
+        description: aboutDescription,
+        url: `${siteMetaData.siteUrl}/about`,
+        siteName: siteMetaData.title,
+        locale: siteMetaData.locale,
+        type: "website",
+        images: [{ url: siteMetaData.siteUrl + siteMetaData.socialBanner, width: 1200, height: 630 }],
     },
 };
 

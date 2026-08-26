@@ -28,11 +28,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified,
     }));
 
+    // lastmod는 실제 콘텐츠 변경 시점과 일치해야 구글이 신호로 신뢰한다 —
+    // 목록 페이지(홈/전체 카테고리)는 가장 최근 글의 updated_at을 사용하고,
+    // 정적 페이지(about/contact)는 부정확한 값 대신 생략한다.
+    const latestUpdatedAt = posts.reduce<Date | undefined>((max, post) => {
+        const updatedAt = new Date(post.updated_at);
+        return !max || updatedAt > max ? updatedAt : max;
+    }, undefined);
+
     return [
-        { url: siteMetaData.siteUrl, lastModified: new Date() },
-        { url: `${siteMetaData.siteUrl}/about`, lastModified: new Date() },
-        { url: `${siteMetaData.siteUrl}/contact`, lastModified: new Date() },
-        { url: `${siteMetaData.siteUrl}/categories/all`, lastModified: new Date() },
+        { url: siteMetaData.siteUrl, lastModified: latestUpdatedAt },
+        { url: `${siteMetaData.siteUrl}/about` },
+        { url: `${siteMetaData.siteUrl}/contact` },
+        { url: `${siteMetaData.siteUrl}/categories/all`, lastModified: latestUpdatedAt },
         ...categoryEntries,
         ...postEntries,
     ];

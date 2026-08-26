@@ -17,7 +17,7 @@ const HAMBURGER_BOT_OPEN = { transform: "rotate(45deg) translateY(0)" } as const
 const HAMBURGER_BOT_CLOSED = { transform: "rotate(0deg) translateY(-6px)" } as const;
 
 const Header = () => {
-    const { theme, setTheme, mounted } = useThemeSwitch();
+    const { theme, setTheme } = useThemeSwitch();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const searchRef = useRef<SearchHandle>(null);
 
@@ -26,10 +26,9 @@ const Header = () => {
         setIsMenuOpen(!isMenuOpen);
     };
 
-    if (!mounted) {
-        return null;
-    }
-
+    // 헤더는 서버 HTML에 항상 포함되어야 한다 — mounted 게이트로 null을 반환하면
+    // 하이드레이션 시 헤더가 삽입되며 CLS가 생기고, 내비 링크가 초기 HTML에서 빠져
+    // 크롤러가 따라갈 수 없다. 테마 의존 UI(토글 버튼)는 CSS dark: variant로 처리한다.
     return (
         <header className="w-full p-4 px-5 sm:px-10 flex items-center justify-between">
             <Logo />
@@ -74,12 +73,11 @@ const Header = () => {
                 <Search ref={searchRef} />
                 <button
                     onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                    aria-label={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
-                    className={`w-6 h-6 ease ml-2 flex items-center justify-center rounded-full p-1 ${
-                        theme === "dark" ? "bg-light text-dark" : "bg-dark text-light"
-                    }`}
+                    aria-label="테마 전환"
+                    className="w-6 h-6 ease ml-2 flex items-center justify-center rounded-full p-1 bg-dark text-light dark:bg-light dark:text-dark"
                 >
-                    {theme === "dark" ? <SunIcon className="fill-light" /> : <MoonIcon className="fill-dark" />}
+                    <MoonIcon className="dark:hidden fill-dark" />
+                    <SunIcon className="hidden dark:inline-block fill-light" />
                 </button>
             </nav>
             <div className="sm:flex items-center hidden">

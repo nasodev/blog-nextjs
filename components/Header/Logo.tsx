@@ -11,8 +11,7 @@ const Logo = () => {
                     src={profileImg}
                     alt="FunDev"
                     className="w-full h-auto rounded-full"
-                    sizes="33vw"
-                    priority
+                    sizes="(min-width: 768px) 64px, 48px"
                 ></Image>
             </div>
             <span className="font-bold text-lg md:text-xl dark:font-semibold">FunDev</span>
