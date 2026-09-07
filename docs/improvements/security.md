@@ -17,7 +17,7 @@
 
 - `npm run lint`, `npx next typegen`, `npx tsc --noEmit` 통과.
 - `npx playwright test tests/security.spec.ts tests/i18n.spec.ts --project=chromium --reporter=line`: 2건 통과.
-- `tests/security.browser.spec.ts`: 실제 HTTP 권한 검사와 미리보기 악성 script/onerror·부모 접근 차단 회귀 검사. 통합 실행 결과는 최종 보고서에 기록.
+- `tests/security.browser.spec.ts`: 실제 HTTP 권한 검사와 미리보기 악성 script/onerror·부모 접근 차단 회귀 검사. 통합 실행 결과는 아래 최종 검증 결과 참조.
 - 의존성 검사는 알려진 패키지 취약점 검사이며, 서비스 전체가 안전하다는 보장은 아님.
 
 ## 운영 적용 및 남은 확인
@@ -32,3 +32,11 @@
 - [Next.js 공개 환경변수](https://nextjs.org/docs/app/guides/environment-variables): NEXT_PUBLIC 값은 브라우저 번들에 포함된다.
 - [MDN iframe sandbox](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe): 미리보기 출처와 스크립트를 격리한다.
 - [Next.js 16.3.4 릴리스](https://github.com/vercel/next.js/releases/tag/v16.3.4), [sharp 보안 공지](https://github.com/advisories/GHSA-f88m-g3jw-g9cj), [PostCSS 보안 공지](https://github.com/advisories/GHSA-fxqj-rqcc-2cmp).
+
+## 최종 검증 결과 (2026-09-07)
+
+- 다섯 영역의 변경을 합친 `codex/blog-integrated-20260907`에서 단위 검사 4건, 브라우저 회귀 검사 11건 통과.
+- 마지막 모바일 문의 레이아웃 변경 후 관련 4건, 테마 아이콘 수정 후 UI 2건을 다시 검사해 통과.
+- 최종 소스의 ESLint 및 Next.js 16.3.4 프로덕션 빌드(TypeScript 검사 포함) 통과. 로컬 mock API와 테스트용 Firebase 설정을 사용해 35개 페이지를 생성했다.
+- standalone 서버에서 공개 페이지·피드·사이트맵·관리자 noindex·JS 정적 파일과 잘못된 글 주소의 404를 확인했다.
+- 운영 배포·실제 관리자 계정·이메일 발송·검색엔진 제출은 수행하지 않았다. 운영 환경에만 적용 가능한 항목은 위 후속 목록에 남겼다.

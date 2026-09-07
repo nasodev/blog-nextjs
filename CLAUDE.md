@@ -8,7 +8,7 @@ Next.js 16 기반 기술 블로그 (https://blog.funq.kr)
 
 | Stack | Technology |
 |-------|------------|
-| Framework | Next.js 16.2.6, React 19, TypeScript |
+| Framework | Next.js 16.3.4, React 19, TypeScript |
 | Content | backend-api `/blog` REST API (tag 기반 on-demand ISR) |
 | Styling | Tailwind CSS, @tailwindcss/typography |
 | Admin Auth | Firebase Auth (Google 로그인, funq-auth 프로젝트 공용) |
