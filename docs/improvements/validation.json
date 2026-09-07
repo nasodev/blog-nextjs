@@ -1,0 +1,88 @@
+{
+  "baseline": "52c54e3fc37ea9e5146888e3a9eeb5e91ed6f564",
+  "area_commits": {
+    "security": "9387b3c",
+    "ui-ux": "82e89d5",
+    "features": "87b4355",
+    "maintenance": "c797b30",
+    "seo": "7e0d5ac"
+  },
+  "unit_tests": {
+    "passed": 4,
+    "failed": 0
+  },
+  "browser_tests": {
+    "passed": 11,
+    "failed": 0,
+    "subsequent_targeted_runs": [
+      4,
+      2
+    ]
+  },
+  "production_build": {
+    "next": "16.3.4",
+    "pages": 35,
+    "api": "localhost mock",
+    "firebase": "test config",
+    "status": "passed"
+  },
+  "npm_audit": {
+    "before": {
+      "high": 7,
+      "low": 1
+    },
+    "after": {
+      "total": 0
+    }
+  },
+  "standalone_smoke": [
+    {
+      "path": "/",
+      "status": 200
+    },
+    {
+      "path": "/en",
+      "status": 200
+    },
+    {
+      "path": "/blogs/test-post-0",
+      "status": 200
+    },
+    {
+      "path": "/en/blogs/test-post-0",
+      "status": 200
+    },
+    {
+      "path": "/categories/ai",
+      "status": 200
+    },
+    {
+      "path": "/contact",
+      "status": 200
+    },
+    {
+      "path": "/admin",
+      "status": 200
+    },
+    {
+      "path": "/feed.xml",
+      "status": 200
+    },
+    {
+      "path": "/en/feed.xml",
+      "status": 200
+    },
+    {
+      "path": "/sitemap.xml",
+      "status": 200
+    },
+    {
+      "path": "/manifest.webmanifest",
+      "status": 200
+    },
+    {
+      "path": "/blogs/does-not-exist",
+      "status": 404
+    }
+  ]
+}
