@@ -3,6 +3,7 @@ import Link from "next/link";
 import Tag from "../Elements/tag";
 import { BlogProp } from "@/types/Home";
 import { slug } from "github-slugger";
+import { localePath } from "@/lib/i18n";
 
 const BlogLayoutOne = ({ blog }: BlogProp) => {
     return (
@@ -19,7 +20,7 @@ const BlogLayoutOne = ({ blog }: BlogProp) => {
             <div className="w-full absolute bottom-0 p-4 xs:p-6 sm:p-10 z-20">
                 <Tag
                     name={blog.tags?.[0] ? slug(blog.tags[0]) : "uncategorized"}
-                    link={`/categories/${blog.tags?.[0] ? slug(blog.tags[0]) : "uncategorized"}`}
+                    link={localePath(`/categories/${blog.tags?.[0] ? slug(blog.tags[0]) : "all"}`, blog.locale)}
                     className="px-6 text-xs sm:text-sm py-1 sm:py-2 !border"
                 />
                 <Link href={blog.url} className="mt-6">

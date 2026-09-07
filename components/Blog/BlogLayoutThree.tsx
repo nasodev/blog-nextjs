@@ -22,7 +22,7 @@ const BlogLayoutThree = ({ blog }: BlogProp) => {
             <div className="flex flex-col w-full mt-4">
                 {blog.tags && blog.tags.length > 0 && (
                     <div className="mb-2">
-                        <TagList tags={blog.tags} maxDisplay={8} />
+                        <TagList tags={blog.tags} maxDisplay={8} locale={blog.locale} />
                     </div>
                 )}
                 <Link href={blog.url} className="inline-block my-1">

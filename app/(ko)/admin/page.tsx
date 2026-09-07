@@ -4,10 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { listAllPosts, deletePost, requestRevalidate } from "@/lib/api/admin";
 import { ApiPostSummary } from "@/lib/api/types";
+import { getApiSlug, getPostLocale, postPath } from "@/lib/i18n";
 
 export default function AdminPostsPage() {
     const [posts, setPosts] = useState<ApiPostSummary[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const slugs = new Set(posts.map((post) => post.slug));
 
     const load = useCallback(() => {
         listAllPosts().then(setPosts).catch((e) => setError(String(e)));
@@ -51,11 +53,16 @@ export default function AdminPostsPage() {
                                 {post.title}
                             </Link>
                             <p className="text-sm opacity-60 truncate">
-                                {post.slug} · {new Date(post.published_at).toLocaleDateString()} · {post.view_count} views
+                                {getPostLocale(post.slug) === "en" ? "EN" : "KO"} · {post.slug} · {new Date(post.published_at).toLocaleDateString()} · {post.view_count} views
                             </p>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
-                            <Link href={`/blogs/${post.slug}`} className="text-sm underline" target="_blank">
+                            {getPostLocale(post.slug) === "ko" && (
+                                <Link href={slugs.has(getApiSlug(post.slug, "en")) ? `/admin/posts/${getApiSlug(post.slug, "en")}` : `/admin/posts/${post.slug}/translate`} className="text-sm underline">
+                                    {slugs.has(getApiSlug(post.slug, "en")) ? "영문 수정" : "영문 작성"}
+                                </Link>
+                            )}
+                            <Link href={postPath(post.slug)} className="text-sm underline" target="_blank">
                                 보기
                             </Link>
                             <button onClick={() => handleDelete(post.slug)} className="text-sm text-red-500 underline">

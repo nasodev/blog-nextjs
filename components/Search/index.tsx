@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import type Fuse from "fuse.js";
 import Link from "next/link";
 import Image from "next/image";
-import { ApiPostSummary } from "@/lib/api/types";
+import { getPublishedPosts } from "@/lib/api/posts";
+import { Locale } from "@/lib/i18n";
 import { BlogSummary, toBlogSummary } from "@/utils/blogData";
 import { SearchIcon } from "@/components/icons";
 
@@ -24,7 +25,7 @@ interface SearchResult {
     score?: number;
 }
 
-const Search = forwardRef<SearchHandle>((_, ref) => {
+const Search = forwardRef<SearchHandle, { locale: Locale }>(({ locale }, ref) => {
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<SearchResult[]>([]);
@@ -59,12 +60,10 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
         setIsOpen(true);
         if (!fuseRef.current) {
             try {
-                const [{ default: Fuse }, res] = await Promise.all([
+                const [{ default: Fuse }, posts] = await Promise.all([
                     import("fuse.js"),
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/blog/posts?size=1000`),
+                    getPublishedPosts(undefined, locale),
                 ]);
-                if (!res.ok) throw new Error(`Failed to fetch posts: ${res.status}`);
-                const posts = (await res.json()) as ApiPostSummary[];
                 blogsRef.current = posts.map(toBlogSummary);
                 fuseRef.current = new Fuse(blogsRef.current, fuseOptions);
             } catch (e) {
@@ -73,7 +72,7 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
             }
         }
         setTimeout(() => inputRef.current?.focus(), 100);
-    }, []);
+    }, [locale]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -126,7 +125,7 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
             <button
                 onClick={openModal}
                 className="inline-flex items-center justify-center w-6 h-6 mr-4 hover:scale-125 transition-all ease duration-200"
-                aria-label="검색"
+                aria-label={locale === "en" ? "Search" : "검색"}
             >
                 <SearchIcon className="w-5 h-5 dark:stroke-light" />
             </button>
@@ -148,13 +147,14 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
                                 type="text"
                                 value={query}
                                 onChange={(e) => handleSearch(e.target.value)}
-                                placeholder="검색..."
+                                placeholder={locale === "en" ? "Search posts..." : "검색..."}
+                                aria-label={locale === "en" ? "Search posts" : "블로그 글 검색"}
                                 className="flex-1 min-w-0 bg-transparent text-dark dark:text-light text-sm sm:text-lg placeholder:text-gray/60 outline-none"
                             />
                             <button
                                 onClick={closeModal}
                                 className="flex-shrink-0 p-1 rounded-full hover:bg-dark/10 dark:hover:bg-light/10 transition-colors"
-                                aria-label="닫기"
+                                aria-label={locale === "en" ? "Close" : "닫기"}
                             >
                                 <svg className="w-5 h-5 text-gray" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -166,8 +166,8 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
                         <div className="max-h-[45vh] sm:max-h-[50vh] overflow-y-auto border-t border-dark/5 dark:border-light/5">
                             {query && results.length === 0 && (
                                 <div className="py-12 text-center text-gray">
-                                    <p className="text-lg">검색 결과가 없습니다</p>
-                                    <p className="text-sm mt-1 text-gray/60">다른 키워드로 검색해보세요</p>
+                                    <p className="text-lg">{locale === "en" ? "No posts found" : "검색 결과가 없습니다"}</p>
+                                    <p className="text-sm mt-1 text-gray/60">{locale === "en" ? "Try a different keyword" : "다른 키워드로 검색해보세요"}</p>
                                 </div>
                             )}
 
@@ -212,7 +212,7 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
 
                             {!query && (
                                 <div className="py-8 sm:py-12 text-center">
-                                    <p className="text-gray/80 text-sm sm:text-base">블로그 글을 검색하세요</p>
+                                    <p className="text-gray/80 text-sm sm:text-base">{locale === "en" ? "Search blog posts" : "블로그 글을 검색하세요"}</p>
                                 </div>
                             )}
                         </div>
@@ -222,15 +222,15 @@ const Search = forwardRef<SearchHandle>((_, ref) => {
                             <span className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs text-gray/60">
                                 <kbd className="px-1 sm:px-1.5 py-0.5 bg-dark/5 dark:bg-light/10 rounded text-gray/80">↑</kbd>
                                 <kbd className="px-1 sm:px-1.5 py-0.5 bg-dark/5 dark:bg-light/10 rounded text-gray/80">↓</kbd>
-                                <span>이동</span>
+                                <span>{locale === "en" ? "Navigate" : "이동"}</span>
                             </span>
                             <span className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs text-gray/60">
                                 <kbd className="px-1 sm:px-1.5 py-0.5 bg-dark/5 dark:bg-light/10 rounded text-gray/80">Enter</kbd>
-                                <span>선택</span>
+                                <span>{locale === "en" ? "Select" : "선택"}</span>
                             </span>
                             <span className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs text-gray/60">
                                 <kbd className="px-1 sm:px-1.5 py-0.5 bg-dark/5 dark:bg-light/10 rounded text-gray/80">ESC</kbd>
-                                <span>닫기</span>
+                                <span>{locale === "en" ? "Close" : "닫기"}</span>
                             </span>
                         </div>
                     </div>

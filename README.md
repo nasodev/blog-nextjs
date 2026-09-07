@@ -47,6 +47,20 @@ npm run lint      # ESLint
 
 `/admin`에서 작성 (Google 로그인 + 관리자 UID 필요). 본문은 HTML 직접 작성이며, Claude Code의 `blog-html` 스킬로 MD 초안을 디자인된 HTML로 변환해 붙여넣는 흐름을 권장. 상세 규약은 `.claude/skills/blog-html/SKILL.md`.
 
+### English posts
+
+- 기존 한국어 주소는 `/blogs/{slug}`, 영문은 `/en/blogs/{slug}`. `/en`에서 영문 목록·검색을 제공한다.
+- `/admin`의 한국어 글 옆 **영문 작성**을 선택해 영문 제목·설명·HTML 본문을 입력한다. 태그·커버·작성자는 원문을 재사용하며 번역은 기본적으로 초안이다. **발행** 후 저장하면 공개된다. 자동 번역은 수행하지 않는다.
+- 현재 API를 그대로 사용하며 영문 글은 `en-{원문 slug}`라는 별도 DB 레코드로 저장한다. `en-`는 영문 전용 접두사이고 원문 slug는 변경하지 않는다. 두 글의 발행·삭제·조회수·댓글은 독립적이다.
+- 발행된 글만 언어 전환, `hreflang`, 사이트맵에 포함한다. 각 언어의 canonical은 자기 주소를 가리키고 번역이 없는 영문 주소는 404다. 번역이 0개인 영문 목록은 `noindex` 처리한다.
+- RSS는 `/feed.xml`(한국어), `/en/feed.xml`(영문). 저장·삭제 시 양쪽 글의 캐시를 갱신한다.
+
+언어별 URL과 상호 `hreflang`은 [Google 다국어 페이지 지침](https://developers.google.com/search/docs/specialty/international/localized-versions)을 따른다. 루트 레이아웃은 `app/(ko)`와 `app/(en)/en`으로 나누어 서버 HTML의 `lang`도 맞춘다.
+
+```bash
+npx playwright test tests/i18n.spec.ts --project=chromium --reporter=line
+```
+
 ## Deployment
 
 `main` push 시 GitHub Actions가 자동 배포: lint → Docker 이미지 빌드(GHCR) → SSH 배포. 상세는 `.github/workflows/deploy.yml`과 `CLAUDE.md`의 Deployment 섹션 참고.

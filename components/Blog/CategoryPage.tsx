@@ -1,13 +1,15 @@
 import BlogGridInfinite from "@/components/Blog/BlogGridInfinite";
 import Categories from "@/components/Blog/Categories";
-import { getPublishedPosts } from "@/lib/api/posts";
+import { getPublishedPosts, getAllPublishedPosts } from "@/lib/api/posts";
 import { slug } from "github-slugger";
 import { sortBlogs } from "@/utils";
 import { toBlogSummary } from "@/utils/blogData";
 import siteMetaData from "@/utils/siteMetaData";
+import { feedPath, getPostLocale, Locale, localePath } from "@/lib/i18n";
+import { notFound } from "next/navigation";
 
-export async function generateStaticParams() {
-    const posts = await getPublishedPosts();
+export async function categoryStaticParams(locale: Locale) {
+    const posts = await getPublishedPosts(undefined, locale);
     const categories: string[] = [];
     const paths = [{ slug: "all" }];
 
@@ -24,38 +26,50 @@ export async function generateStaticParams() {
     return paths;
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-    const { slug } = await params;
-    const title = `${slug} Blogs`;
+export async function categoryMetadata(categorySlug: string, locale: Locale) {
+    const posts = await getAllPublishedPosts();
+    const matchingPosts = posts.filter((post) => categorySlug === "all" || post.tags.some((tag) => slug(tag) === categorySlug));
+    const hasPosts = matchingPosts.some((post) => getPostLocale(post.slug) === locale);
+    if (!hasPosts && categorySlug !== "all") notFound();
+    const path = `/categories/${categorySlug}`;
+    const languages: Record<string, string> = {};
+    for (const language of ["ko", "en"] as const) {
+        if (matchingPosts.some((post) => getPostLocale(post.slug) === language)) {
+            languages[language] = siteMetaData.siteUrl + localePath(path, language);
+        }
+    }
+    const title = `${categorySlug} Blogs`;
     const description =
-        slug === "all"
+        locale === "en"
+            ? categorySlug === "all" ? "All posts about AI and coding" : `Posts about ${categorySlug}`
+            : categorySlug === "all"
             ? "AI와 코딩에 관한 모든 블로그 글 목록"
-            : `${slug} 관련 블로그 글 목록`;
+            : `${categorySlug} 관련 블로그 글 목록`;
 
     return {
         title,
         description,
+        ...(!hasPosts ? { robots: { index: false, follow: true } } : {}),
         alternates: {
-            canonical: `/categories/${slug}`,
-            // alternates는 layout 값을 통째로 대체하므로 RSS 자동발견 링크를 함께 재선언
-            types: { "application/rss+xml": "/feed.xml" },
+            canonical: localePath(path, locale),
+            languages,
+            types: { "application/rss+xml": feedPath(locale) },
         },
         // openGraph도 layout 값을 통째로 대체하므로 images/siteName/locale/type까지 채운다
         openGraph: {
             title: `${title} | ${siteMetaData.title}`,
             description,
-            url: `${siteMetaData.siteUrl}/categories/${slug}`,
+            url: siteMetaData.siteUrl + localePath(path, locale),
             siteName: siteMetaData.title,
-            locale: siteMetaData.locale,
+            locale: locale === "en" ? "en_US" : "ko_KR",
             type: "website",
             images: [{ url: siteMetaData.siteUrl + siteMetaData.socialBanner, width: 1200, height: 630 }],
         },
     };
 }
 
-const CategoryPage = async ({ params }: { params: Promise<{ slug: string }> }) => {
-    const { slug: categorySlug } = await params;
-    const posts = await getPublishedPosts();
+const CategoryPage = async ({ slug: categorySlug, locale }: { slug: string; locale: Locale }) => {
+    const posts = await getPublishedPosts(undefined, locale);
     const allCategories = ["all"];
 
     // 먼저 모든 태그를 수집
@@ -80,6 +94,7 @@ const CategoryPage = async ({ params }: { params: Promise<{ slug: string }> }) =
 
     // 날짜순 정렬
     const sortedBlogs = sortBlogs(filteredPosts.map(toBlogSummary));
+    if (!sortedBlogs.length && categorySlug !== "all") notFound();
 
     return (
         <article className="mt-12 flex flex-col text-dark dark:text-light">
@@ -89,7 +104,7 @@ const CategoryPage = async ({ params }: { params: Promise<{ slug: string }> }) =
                     {sortedBlogs.length} posts found. Discover more categories and expand your knowledge!
                 </span>
             </div>
-            <Categories categories={allCategories} currentSlug={categorySlug} />
+            <Categories categories={allCategories} currentSlug={categorySlug} locale={locale} />
 
             <BlogGridInfinite blogs={sortedBlogs} itemsPerPage={9} />
         </article>

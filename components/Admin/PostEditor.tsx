@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import CodeMirror from "@uiw/react-codemirror";
 import { html as htmlLang } from "@codemirror/lang-html";
 import { createPost, updatePost, uploadImage, requestRevalidate, PostPayload } from "@/lib/api/admin";
 import { ApiPostDetail } from "@/lib/api/types";
 import { API_URL } from "@/lib/api/posts";
 import EditorPreview from "@/components/Admin/EditorPreview";
+import { getApiSlug, getPostLocale, getSourceSlug, postPath } from "@/lib/i18n";
 
 const DRAFT_KEY = (slug: string) => `blog-draft:${slug}`;
 
@@ -20,17 +22,19 @@ interface Meta {
     is_published: boolean;
 }
 
-const PostEditor = ({ initial }: { initial: ApiPostDetail | null }) => {
+const PostEditor = ({ initial, translationSource }: { initial: ApiPostDetail | null; translationSource?: ApiPostDetail }) => {
     const router = useRouter();
     const isNew = initial === null;
-    const draftKey = DRAFT_KEY(initial?.slug ?? "new");  // 컴포넌트 생명주기 동안 고정 (initial은 마운트 후 안 바뀜)
+    const initialSlug = initial?.slug ?? (translationSource ? getApiSlug(translationSource.slug, "en") : "");
+    const isTranslation = !!translationSource || getPostLocale(initialSlug) === "en";
+    const draftKey = DRAFT_KEY(initialSlug || "new");
     const [meta, setMeta] = useState<Meta>({
-        slug: initial?.slug ?? "",
+        slug: initialSlug,
         title: initial?.title ?? "",
         description: initial?.description ?? "",
-        tags: initial?.tags.join(", ") ?? "",
-        cover_image_url: initial?.cover_image_url ?? "",
-        is_published: initial?.is_published ?? true,
+        tags: (initial ?? translationSource)?.tags.join(", ") ?? "",
+        cover_image_url: (initial ?? translationSource)?.cover_image_url ?? "",
+        is_published: initial?.is_published ?? !translationSource,
     });
     const [content, setContent] = useState(initial?.content_html ?? "");
     const [status, setStatus] = useState<string | null>(null);
@@ -94,6 +98,22 @@ const PostEditor = ({ initial }: { initial: ApiPostDetail | null }) => {
     );
 
     const handleSave = async () => {
+        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(meta.slug) || meta.slug.length > 200) {
+            setStatus("slug는 영문 소문자·숫자·하이픈으로 200자 이내로 입력하세요.");
+            return;
+        }
+        if (isNew && !translationSource && getPostLocale(meta.slug) === "en") {
+            setStatus("en- 접두사는 영문 번역 전용입니다. 글 목록에서 '영문 작성'을 선택하세요.");
+            return;
+        }
+        if (translationSource && meta.slug !== initialSlug) {
+            setStatus("영문 번역의 slug는 원문에 맞춰 고정됩니다.");
+            return;
+        }
+        if (meta.is_published && (!meta.title.trim() || !meta.description.trim() || !content.trim())) {
+            setStatus("발행하려면 제목, 설명, 본문을 입력하세요.");
+            return;
+        }
         setSaving(true);
         setStatus(null);
         const payload: PostPayload = {
@@ -106,7 +126,7 @@ const PostEditor = ({ initial }: { initial: ApiPostDetail | null }) => {
         };
         try {
             const saved = isNew
-                ? await createPost({ ...payload, slug: meta.slug })
+                ? await createPost({ ...payload, slug: meta.slug, ...(translationSource ? { author: translationSource.author } : {}) })
                 : await updatePost(initial!.slug, payload);
             try {
                 await requestRevalidate(saved.slug);
@@ -127,24 +147,33 @@ const PostEditor = ({ initial }: { initial: ApiPostDetail | null }) => {
 
     return (
         <main className="px-5 py-6">
+            {isTranslation && (
+                <p className="mb-4">
+                    영문 번역 · <Link href={postPath(getSourceSlug(initialSlug))} target="_blank" className="underline">한국어 원문 보기</Link>
+                    {translationSource && <span className="ml-3 text-sm opacity-70">영문 제목·설명·본문을 작성한 뒤 발행하세요.</span>}
+                </p>
+            )}
             {/* 메타데이터 폼 */}
             <div className="grid grid-cols-2 gap-3 mb-4 max-w-4xl">
                 <input
                     className="border rounded px-3 py-2 bg-transparent"
                     placeholder="slug (kebab-case)"
+                    aria-label="slug"
                     value={meta.slug}
-                    disabled={!isNew}
+                    disabled={!isNew || !!translationSource}
                     onChange={(e) => setMeta({ ...meta, slug: e.target.value })}
                 />
                 <input
                     className="border rounded px-3 py-2 bg-transparent"
-                    placeholder="제목"
+                    placeholder={isTranslation ? "영문 제목" : "제목"}
+                    aria-label={isTranslation ? "영문 제목" : "제목"}
                     value={meta.title}
                     onChange={(e) => setMeta({ ...meta, title: e.target.value })}
                 />
                 <input
                     className="border rounded px-3 py-2 bg-transparent col-span-2"
-                    placeholder="설명"
+                    placeholder={isTranslation ? "영문 설명 (검색 결과에 표시)" : "설명"}
+                    aria-label={isTranslation ? "영문 설명" : "설명"}
                     value={meta.description}
                     onChange={(e) => setMeta({ ...meta, description: e.target.value })}
                 />

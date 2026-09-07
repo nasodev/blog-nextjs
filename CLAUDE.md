@@ -63,7 +63,7 @@ npm run lint      # ESLint
                     requestRevalidate() → POST /api/revalidate → revalidateTag(tag, { expire: 0 })
                                           │
                                           ▼
-              lib/api/posts.ts (next: { tags: ["posts"] / [`post:{slug}`] }) ← app/blogs/[slug]/page.tsx 등
+              lib/api/posts.ts (next: { tags: ["posts"] / [`post:{slug}`] }) ← components/Blog/BlogPage.tsx 등
 ```
 
 - **글 작성/수정**: MDX가 아니라 `/admin` 에디터에서 HTML 본문을 직접 작성 (`components/Admin/PostEditor.tsx`)
@@ -75,7 +75,7 @@ npm run lint      # ESLint
 
 **공개 페이지 (읽기)**
 ```
-[backend-api /blog]  --fetch(tags)-->  lib/api/posts.ts  -->  app/page.tsx, app/blogs/[slug]/page.tsx, 카테고리/검색 등
+[backend-api /blog]  --fetch(tags)-->  lib/api/posts.ts  -->  components/Home/HomePage.tsx, components/Blog/BlogPage.tsx, 카테고리/검색 등
                                               │
                                               ▼
                                     lib/api/views.ts (조회수 POST) ← ViewCounter.tsx (마운트 시 1회)
@@ -93,7 +93,8 @@ npm run lint      # ESLint
 
 - **조회수**: `lib/api/views.ts` - backend-api `POST /blog/posts/{slug}/view` 호출, `ViewCounter.tsx`가 마운트 시 1회 증가
 - **댓글**: `components/Comments/index.tsx` - Giscus (GitHub Discussions)
-- **SEO**: `app/blogs/[slug]/page.tsx` - generateMetadata() + JSON-LD
+- **SEO**: `components/Blog/BlogPage.tsx` - 언어별 metadata + JSON-LD
+- **영문**: `/en` 경로, `en-{원문 slug}` API 레코드, `/admin`의 영문 작성·수정. 언어별 루트 레이아웃은 `app/(ko)`와 `app/(en)/en`. 상세 규약은 README의 English posts 참고
 - **관리자 에디터**: `/admin` (Firebase Google 로그인 필요, `AuthGate.tsx`) - 글 목록/작성/수정/삭제, CodeMirror 편집 + 초안 로컬 백업 + `/admin/preview` iframe 실시간 프리뷰
 - **온디맨드 재검증**: `app/api/revalidate/route.ts` - `x-revalidate-secret` 헤더 검증 후 `revalidateTag(tag, { expire: 0 })`; 에디터 저장/삭제 시 자동 호출
 

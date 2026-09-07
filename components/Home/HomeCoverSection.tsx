@@ -4,6 +4,7 @@ import Link from "next/link";
 import Tag from "../Elements/tag";
 import { BlogsProp } from "@/types/Home";
 import { slug } from "github-slugger";
+import { localePath } from "@/lib/i18n";
 
 const HomeCoverSection = ({ blogs }: BlogsProp) => {
     const sortedBlogs = sortBlogs(blogs);
@@ -23,7 +24,7 @@ const HomeCoverSection = ({ blogs }: BlogsProp) => {
                 <div className="w-full lg:w-3/4 p-6 sm:p-8 md:p-12 lg:p-16 flex flex-col items-start justify-center z-0 text-light">
                     <Tag
                         name={blog.tags?.[0] ? slug(blog.tags[0]) : "uncategorized"}
-                        link={`/categories/${blog.tags?.[0] ? slug(blog.tags[0]) : "uncategorized"}`}
+                        link={localePath(`/categories/${blog.tags?.[0] ? slug(blog.tags[0]) : "all"}`, blog.locale)}
                     />
                     <Link href={blog.url} className="mt-6">
                         <h1 className="font-bold capitalize text-lg sm:text-xl md:text-3xl lg:text-4xl">

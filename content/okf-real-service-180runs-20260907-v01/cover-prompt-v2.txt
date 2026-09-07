@@ -1,0 +1,10 @@
+Generation mode: built-in image_gen edit
+Final direction: original cute polka-dot robot illustration. The initial named-artist style request was rejected by the image tool safety system; the final prompt below uses general visual characteristics.
+Tribute context verified: https://yayoikusamamuseum.jp/en/news/news20260827/
+
+Edit the attached blog cover into an original cheerful polka-dot illustration. This revision should look cute, warm and playful.
+Keep: one central Gemini-inspired robot, the blue-purple-pink four-point sparkle emblem on its forehead, and wide 2:1 landscape framing.
+Change the robot to a softly rounded ceramic art toy with a big head and tiny stubby limbs. Paint its shell warm lemon yellow with black polka dots. Cream face panel, rosy cheeks, one smiling curved eye and one small spiral eye, a shy little smile, a tiny pastel bandage on its temple and a crooked antenna. Its hand gently touches its cheek in a cute 'oops' pose. Make it only mildly confused, entirely intact and lovable.
+Replace the dark laboratory with a bright imaginative world of soft rounded hills, scattered red-and-white dotted spheres, warm ivory ground, turquoise accents and simple repeating dot patterns receding into the distance. Use an original composition and original character design. Soft diffuse daylight, matte painted ceramic and hand-painted textures, clear silhouette, warm playful palette. Patterns are quieter behind the head and concentrated around the side edges.
+Robot fills the central 45 percent, with enough headroom, and face/emblem readable in a square thumbnail crop. Suitable for a developer blog cover, polished friendly editorial illustration. No embedded title or lettering because the site overlays its own.
+Remove all smoke, sparks, cracks, exposed wires, scuffs, severe damage, scary expressions, dark industrial atmosphere and dramatic metallic realism. No other characters, no text, no signature, no watermark. Do not reproduce any existing artwork.

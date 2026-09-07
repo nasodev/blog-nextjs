@@ -1,0 +1,11 @@
+Generation mode: built-in image_gen
+
+Use case: stylized-concept
+Asset type: striking editorial hero cover for a Korean developer blog article, landscape 2:1 aspect ratio, ideally 2048x1024.
+Primary request: a broken Gemini AI robot, an attention-grabbing satirical metaphor for an AI experiment that did not justify adopting a new knowledge format.
+Subject: ONE futuristic Gemini-inspired robot, large expressive head and compact torso, visibly malfunctioning and slumped. Pearl-white metal shell, glossy black face screen with a prominent diagonal crack, one cyan eye flickering in fragmented pixels while the other eye is dark. A small side panel has popped open exposing a few wires and emitting several bright orange sparks and a delicate wisp of smoke. A clear four-point Gemini sparkle emblem in a blue-purple-pink gradient on the upper forehead, recognizable at thumbnail scale. The robot is frustrated and exhausted, with a slightly comical defeated pose, rather than frightening.
+Style/medium: premium cinematic 3D editorial illustration, expressive stylized character, polished but scuffed materials, crisp focal detail, dramatic photographic lighting. Obviously a conceptual illustration, not a real product photograph.
+Scene/backdrop: dark minimalist AI lab, softly blurred, a few dim fragmented document-shaped holograms behind the robot to hint at knowledge processing. Restrained background, one strong subject.
+Composition/framing: wide 2:1 cover. Robot head and torso large in the central 55 percent of the frame, head above vertical center, intact silhouette within the center crop for square thumbnails. Face and Gemini emblem dominate, strong blue-purple rim light against near-black negative space on both sides. Leave the horizontal band around 60 percent down comparatively uncluttered because the website overlays a white title there. Enough headroom and side margins to survive website crops.
+Palette: midnight navy and black, Gemini cyan/electric blue/purple glow, bright orange sparks for contrast, pearl-white damaged shell.
+Constraints: no text, no letters, no caption, no title, no watermark, no other characters, no fake screenshot or UI, no explosion, no gore. Do not add unrelated brand logos. Make the malfunction unmistakable immediately, compelling and visually witty.

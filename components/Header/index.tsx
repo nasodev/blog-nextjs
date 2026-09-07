@@ -8,6 +8,7 @@ import { LinkedinIcon, SunIcon, MoonIcon, XIcon, GithubIcon, InstagramIcon } fro
 import useThemeSwitch from "@/components/Hook/useThemeSwitch";
 import siteMetaData from "@/utils/siteMetaData";
 import Search, { SearchHandle } from "@/components/Search";
+import { Locale, localePath } from "@/lib/i18n";
 
 const HAMBURGER_TOP_OPEN = { transform: "rotate(-45deg) translateY(0)" } as const;
 const HAMBURGER_TOP_CLOSED = { transform: "rotate(0deg) translateY(6px)" } as const;
@@ -16,7 +17,7 @@ const HAMBURGER_MID_CLOSED = { opacity: 1 } as const;
 const HAMBURGER_BOT_OPEN = { transform: "rotate(45deg) translateY(0)" } as const;
 const HAMBURGER_BOT_CLOSED = { transform: "rotate(0deg) translateY(-6px)" } as const;
 
-const Header = () => {
+const Header = ({ locale = "ko" }: { locale?: Locale }) => {
     const { theme, setTheme } = useThemeSwitch();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const searchRef = useRef<SearchHandle>(null);
@@ -31,8 +32,8 @@ const Header = () => {
     // 크롤러가 따라갈 수 없다. 테마 의존 UI(토글 버튼)는 CSS dark: variant로 처리한다.
     return (
         <header className="w-full p-4 px-5 sm:px-10 flex items-center justify-between">
-            <Logo />
-            <button className="inline-block sm:hidden z-50" onClick={handleMenuToggle} aria-label={isMenuOpen ? "메뉴 닫기" : "메뉴 열기"}>
+            <Logo locale={locale} />
+            <button className="inline-flex md:hidden relative w-8 h-8 items-center justify-center z-[60]" onClick={handleMenuToggle} aria-controls="main-navigation" aria-expanded={isMenuOpen} aria-label={locale === "en" ? isMenuOpen ? "Close menu" : "Open menu" : isMenuOpen ? "메뉴 닫기" : "메뉴 열기"}>
                 <div className="w-6 cursor-pointer transition-all ease duration-300">
                     <div className="relative">
                         <span
@@ -57,11 +58,12 @@ const Header = () => {
                 </div>
             </button>
             <nav
-                className={`w-max py-3 px-3 sm:px-8 border border-solid border-dark rounded-full font-medium capitalize flex items-center fixed right-1/2 translate-x-1/2 
-                    bg-light/80 backdrop-blur-sm z-50 transition-all duration-300 ease 
-                    ${isMenuOpen ? "top-4" : "top-[-5rem]"} sm:top-4`}
+                id="main-navigation"
+                className={`w-max max-w-[calc(100vw-1rem)] py-3 px-3 md:px-8 text-sm md:text-base border border-solid border-dark rounded-full font-medium capitalize items-center justify-center flex-wrap fixed right-1/2 translate-x-1/2
+                    bg-light/80 backdrop-blur-sm z-50 transition-all duration-300 ease
+                    ${isMenuOpen ? "flex top-20" : "hidden md:flex"} md:top-4`}
             >
-                <Link href="/" className="mr-2">
+                <Link href={localePath("/", locale)} className="mr-2">
                     Home
                 </Link>
                 <Link href="/about" className="mx-2">
@@ -70,17 +72,20 @@ const Header = () => {
                 <Link href="/contact" className="mx-2">
                     Contact
                 </Link>
-                <Search ref={searchRef} />
+                <Link href={locale === "en" ? "/" : "/en"} hrefLang={locale === "en" ? "ko" : "en"} lang={locale === "en" ? "ko" : "en"} className="mx-2 whitespace-nowrap text-sm">
+                    {locale === "en" ? "한국어" : "English"}
+                </Link>
+                <Search ref={searchRef} locale={locale} key={locale} />
                 <button
                     onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                    aria-label="테마 전환"
+                    aria-label={locale === "en" ? "Toggle theme" : "테마 전환"}
                     className="w-6 h-6 ease ml-2 flex items-center justify-center rounded-full p-1 bg-dark text-light dark:bg-light dark:text-dark"
                 >
                     <MoonIcon className="dark:hidden fill-dark" />
                     <SunIcon className="hidden dark:inline-block fill-light" />
                 </button>
             </nav>
-            <div className="sm:flex items-center hidden">
+            <div className="lg:flex items-center hidden">
                 <Link href={siteMetaData.github} className="inline-block w-6 h-6 mr-4" aria-label="GitHub">
                     <GithubIcon className="hover:scale-125 transition-all ease duration-200 dark:fill-light" aria-hidden="true" />
                 </Link>

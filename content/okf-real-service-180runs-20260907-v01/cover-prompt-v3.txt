@@ -1,0 +1,15 @@
+Generation mode: built-in image_gen edit
+
+Edit target: attached cute yellow polka-dot robot cover.
+Make a precise localized change to the robot's facial expression and the meaning of its hand gesture. Preserve the image's composition, 2:1 aspect ratio, entire environment, yellow/black polka-dot body, pastel colors, soft ceramic texture, head proportions, limbs, bandage, antenna and four-point blue-purple-pink forehead emblem.
+
+The current happy wink and smile make the robot look successful and confident. Replace that expression with unmistakably confused, embarrassed, mildly defeated "I tried, but it isn't working" emotion, still very cute and endearing.
+- Remove the happy closed upward-curving eye. Give that eye a small uneven dot pupil with a drooping upper lid, gaze unfocused.
+- Keep a small dizzy spiral in the other eye, but make the lid droop slightly.
+- Add two thin worried eyebrows: raised inner ends near the center of the face and lowered outer ends.
+- Replace the smile with a small downward-curving, off-center worried pout, NO upturned corners.
+- Add one small pale blue cartoon sweat drop near the temple, clearly separate from the existing bandage.
+- Subdue the rosy cheeks slightly so they convey embarrassment, not cheerfulness.
+- The hand against the cheek should read as sheepishly scratching/holding the side of the face, not a confident pose.
+Keep the facial marks high-contrast dark brown so the troubled expression is immediately readable at thumbnail size.
+This is adorable comic frustration, not happiness, anger, grief or horror. Do not add severe damage, smoke, sparks, tears, text, captions, lettering or other characters. Change as little outside the face as possible.

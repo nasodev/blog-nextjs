@@ -4,6 +4,7 @@ import React from "react";
 import { slug } from "github-slugger";
 import ViewCounter from "./ViewCounter";
 import { BlogSummary } from "@/utils/blogData";
+import { localePath } from "@/lib/i18n";
 
 const BlogDetails = ({ blog, slug: blogSlug }: { blog: BlogSummary; slug: string }) => {
     return (
@@ -15,7 +16,7 @@ const BlogDetails = ({ blog, slug: blogSlug }: { blog: BlogSummary; slug: string
                 <ViewCounter slug={blogSlug} />
             </span>
             <div className="m-3">{blog.readingTime}</div>
-            <Link href={`/categories/${blog.tags[0] ? slug(blog.tags[0]) : "uncategorized"}`} className="m-3">
+            <Link href={localePath(`/categories/${blog.tags[0] ? slug(blog.tags[0]) : "all"}`, blog.locale)} className="m-3">
                 #{blog.tags[0] ? slug(blog.tags[0]) : "uncategorized"}
             </Link>
         </div>
