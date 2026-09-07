@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("search handles slow loading, focus trapping, Escape and retry", async ({ page }) => {
+test("search handles slow loading, focus trapping, Escape and retry", async ({ page }, testInfo) => {
     let finish: (() => void) | undefined;
     await page.route("**/blog/posts?*", async (route) => {
         await new Promise<void>((resolve) => { finish = resolve; });
@@ -17,6 +17,7 @@ test("search handles slow loading, focus trapping, Escape and retry", async ({ p
     await expect.poll(() => !!finish).toBe(true);
     finish!();
     await expect(dialog.getByRole("option")).toHaveCount(1);
+    await page.screenshot({ path: testInfo.outputPath("search-desktop.png") });
     await page.keyboard.press("Tab");
     await expect(dialog.getByRole("button", { name: "검색 닫기" })).toBeFocused();
     await page.keyboard.press("Shift+Tab");
@@ -33,7 +34,7 @@ test("search handles slow loading, focus trapping, Escape and retry", async ({ p
     await expect(dialog.getByRole("button", { name: "다시 시도" })).toBeVisible();
 });
 
-test("mobile navigation closes on selection and long code does not overflow the page", async ({ page }) => {
+test("mobile navigation closes on selection and long code does not overflow the page", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 320, height: 740 });
     await page.goto("/");
     await page.getByRole("button", { name: "메뉴 열기" }).click();
@@ -41,6 +42,7 @@ test("mobile navigation closes on selection and long code does not overflow the 
     await expect(page.getByRole("button", { name: "메뉴 열기" })).toHaveAttribute("aria-expanded", "false");
     await page.goto("/blogs/test-post-0");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath("article-mobile.png"), fullPage: true });
     await page.emulateMedia({ reducedMotion: "reduce" });
     expect(await page.locator("html").evaluate((element) => getComputedStyle(element).scrollBehavior)).toBe("auto");
 });

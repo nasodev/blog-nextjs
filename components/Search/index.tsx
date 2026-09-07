@@ -83,6 +83,13 @@ const Search = forwardRef<SearchHandle, { locale: Locale }>(({ locale }, ref) =>
             <dialog ref={dialogRef} aria-label={en ? "Search posts" : "블로그 글 검색"}
                 className="w-[calc(100%-2rem)] max-w-lg mt-[10vh] p-0 rounded-xl border border-dark/10 dark:border-light/20 bg-light dark:bg-dark text-dark dark:text-light shadow-2xl backdrop:bg-dark/70 normal-case text-left"
                 onClose={() => { setIsOpen(false); setQuery(""); setSelectedIndex(0); }}
+                onKeyDown={(event) => {
+                    if (event.key === "Escape" && !event.nativeEvent.isComposing) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        closeModal();
+                    }
+                }}
                 onClick={(event) => {
                     if (event.target !== event.currentTarget) return;
                     const rect = event.currentTarget.getBoundingClientRect();
