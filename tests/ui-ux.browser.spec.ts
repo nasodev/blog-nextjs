@@ -18,7 +18,9 @@ test("search handles slow loading, focus trapping, Escape and retry", async ({ p
     finish!();
     await expect(dialog.getByRole("option")).toHaveCount(1);
     await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
+    await expect(dialog.getByRole("button", { name: "검색 닫기" })).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await trigger.focus(); // The modal makes the underlying page inert.
     await expect(input).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(dialog).not.toBeVisible();
