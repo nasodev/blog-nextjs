@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     reactStrictMode: true,
     reactCompiler: true,
     poweredByHeader: false,
+    agentRules: false,
 
     images: {
         formats: ["image/avif", "image/webp"],
