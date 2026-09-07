@@ -7,6 +7,7 @@ test("search handles slow loading, focus trapping, Escape and retry", async ({ p
         await route.fulfill({ json: [{ id: "test", slug: "test-post-0", title: "테스트 가이드", description: "테스트", tags: [], cover_image_url: null, published_at: "2026-09-01", updated_at: "2026-09-01", reading_time_minutes: 1, view_count: 0 }] });
     });
     await page.goto("/");
+    await expect(page.getByRole("button", { name: "테마 전환" }).locator("svg:visible")).toHaveCount(1);
     const trigger = page.getByRole("button", { name: "검색", exact: true });
     await trigger.click();
     const dialog = page.getByRole("dialog");
