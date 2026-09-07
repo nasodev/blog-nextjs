@@ -1,15 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
 import { signInWithGoogle, signOutUser, onAuthChange } from "@/lib/firebase";
 import type { User } from "firebase/auth";
 
 const AuthGate = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const pathname = usePathname();
-    const isPreview = pathname === "/admin/preview";
 
     useEffect(() => {
         return onAuthChange((u) => {
@@ -36,12 +33,10 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
 
     return (
         <div>
-            {!isPreview && (
-                <div className="flex justify-end px-5 py-2 text-sm gap-4">
+            <div className="flex justify-end px-5 py-2 text-sm gap-4">
                     <span>{user.email}</span>
                     <button onClick={() => signOutUser()} className="underline">로그아웃</button>
-                </div>
-            )}
+            </div>
             {children}
         </div>
     );

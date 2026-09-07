@@ -34,7 +34,6 @@ if [ ! -f "$ENV_FILE" ]; then
 # REVALIDATE_SECRET(NEXT_PUBLIC_ 접두사 없음)만 유일하게 런타임에 실제로 읽힘.
 NEXT_PUBLIC_API_URL=https://api.funq.kr
 REVALIDATE_SECRET=your_random_secret
-NEXT_PUBLIC_REVALIDATE_SECRET=your_random_secret
 NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_firebase_project_id
@@ -54,7 +53,6 @@ echo "2. GitHub Secrets 설정:"
 echo "   - SSH_HOST, SSH_USER, SSH_KEY, SSH_PORT"
 echo "   - GHCR_TOKEN (read:packages 권한)"
 echo "   - NEXT_PUBLIC_API_URL"
-echo "   - NEXT_PUBLIC_REVALIDATE_SECRET"
 echo "   - NEXT_PUBLIC_FIREBASE_API_KEY"
 echo "   - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN"
 echo "   - NEXT_PUBLIC_FIREBASE_PROJECT_ID"

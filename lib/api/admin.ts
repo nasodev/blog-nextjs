@@ -18,6 +18,7 @@ export interface PostPayload {
 
 async function adminFetch(path: string, init: RequestInit = {}): Promise<Response> {
     const token = await getIdToken();
+    if (!token) throw new Error("로그인이 필요합니다.");
     const res = await fetch(`${API_URL}${path}`, {
         ...init,
         headers: {
@@ -59,11 +60,13 @@ export const uploadImage = async (file: File): Promise<{ url: string; filename: 
 };
 
 export const requestRevalidate = async (slug: string): Promise<void> => {
+    const token = await getIdToken();
+    if (!token) throw new Error("로그인이 필요합니다.");
     const res = await fetch("/api/revalidate", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            "x-revalidate-secret": process.env.NEXT_PUBLIC_REVALIDATE_SECRET ?? "",
+            Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ slug }),
     });

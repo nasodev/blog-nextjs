@@ -1174,7 +1174,7 @@ export default function ComponentName({ props }: Props) {
 ## Environment Variables
 
 See `.env.example` and `CLAUDE.md`'s *Environment Variables* section for the current,
-authoritative list (`NEXT_PUBLIC_API_URL`, `REVALIDATE_SECRET` / `NEXT_PUBLIC_REVALIDATE_SECRET`,
+authoritative list (`NEXT_PUBLIC_API_URL`, server-only `REVALIDATE_SECRET` (editor uses Firebase ID tokens),
 `NEXT_PUBLIC_FIREBASE_*`). The Supabase variables previously documented here
 (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) no longer apply — Supabase was
 fully removed.

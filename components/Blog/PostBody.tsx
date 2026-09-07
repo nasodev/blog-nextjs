@@ -1,7 +1,4 @@
-const PostBody = ({ html }: { html: string }) => {
-    return (
-        <div
-            className="post-body col-span-12 md:col-span-9 font-in prose sm:prose-base md:prose-lg max-w-max
+export const postBodyClassName = `post-body col-span-12 md:col-span-9 font-in prose sm:prose-base md:prose-lg max-w-max
         prose-blockquote:bg-accent/20
         prose-blockquote:px-6
         prose-blockquote:p-2
@@ -18,10 +15,10 @@ const PostBody = ({ html }: { html: string }) => {
 
         first-letter:text-2xl
         sm:first-letter:text-4xl
-        "
-            dangerouslySetInnerHTML={{ __html: html }}
-        />
-    );
-};
+        `;
+
+const PostBody = ({ html }: { html: string }) => (
+    <div className={postBodyClassName} dangerouslySetInnerHTML={{ __html: html }} />
+);
 
 export default PostBody;

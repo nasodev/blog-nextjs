@@ -3,21 +3,25 @@ import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
 import siteMetaData from "@/utils/siteMetaData";
 import { getApiSlug, getPostLocale, getSourceSlug, localePath, postPath } from "@/lib/i18n";
+import { revalidationAuthStatus } from "@/lib/revalidation";
 
 // IndexNow(네이버·빙 즉시 색인 ping) 키 — 공개 URL(public/{키}.txt)로 검증되는 설계라
 // 공개 값이며, 교체 시 public/의 키 파일도 반드시 같은 값으로 함께 교체해야 한다.
 const INDEXNOW_KEY = "4421e8031a14f92fda7b86daa22cf760";
 
 export async function POST(request: NextRequest) {
-    const secret = request.headers.get("x-revalidate-secret");
-    if (!secret || secret !== (process.env.REVALIDATE_SECRET ?? process.env.NEXT_PUBLIC_REVALIDATE_SECRET)) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const status = await revalidationAuthStatus(request);
+    if (status !== 200) {
+        return NextResponse.json({ error: status === 503 ? "Authorization service unavailable" : "Unauthorized" }, { status });
     }
 
     const parsed = await request.json().catch(() => null);
-    const body = (parsed && typeof parsed === "object" ? parsed : {}) as { slug?: unknown };
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return NextResponse.json({ error: "Invalid JSON object" }, { status: 400 });
+    }
+    const body = parsed as { slug?: unknown };
     const slug = body.slug;
-    if (slug !== undefined && (typeof slug !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))) {
+    if (slug !== undefined && (typeof slug !== "string" || slug.length > 200 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))) {
         return NextResponse.json({ error: "Invalid slug" }, { status: 400 });
     }
     if (slug) {
@@ -35,6 +39,7 @@ export async function POST(request: NextRequest) {
             try {
                 await fetch("https://api.indexnow.org/indexnow", {
                     method: "POST",
+                    signal: AbortSignal.timeout(5000),
                     headers: { "Content-Type": "application/json; charset=utf-8" },
                     body: JSON.stringify({
                         host: new URL(siteMetaData.siteUrl).host,

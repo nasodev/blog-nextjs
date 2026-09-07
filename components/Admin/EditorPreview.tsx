@@ -1,40 +1,33 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { postBodyClassName } from "@/components/Blog/PostBody";
 
 const EditorPreview = ({ html }: { html: string }) => {
-    const iframeRef = useRef<HTMLIFrameElement>(null);
-    const [ready, setReady] = useState(false);
-    const [dark, setDark] = useState(
-        () => typeof document !== "undefined" && document.documentElement.classList.contains("dark")
-    );
+    const [documentHtml, setDocumentHtml] = useState("");
+    const [dark, setDark] = useState(false);
 
     useEffect(() => {
-        const onMessage = (e: MessageEvent) => {
-            if (e.origin !== window.location.origin) return;
-            if (e.data?.previewReady) setReady(true);
-        };
-        window.addEventListener("message", onMessage);
-        return () => window.removeEventListener("message", onMessage);
-    }, []);
-
-    // 300ms 디바운스로 HTML 전송
-    useEffect(() => {
-        if (!ready) return;
         const timer = setTimeout(() => {
-            iframeRef.current?.contentWindow?.postMessage({ html, dark }, window.location.origin);
+            const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], head style'))
+                .map((style) => style.outerHTML).join("");
+            setDocumentHtml(`<!doctype html><html class="${dark ? "dark" : ""}"><head>
+                <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+                <meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'; form-action 'none'">
+                <base href="${window.location.origin}/">${styles}</head>
+                <body class="p-5 bg-light dark:bg-dark"><div class="${postBodyClassName}">${html}</div></body></html>`);
         }, 300);
         return () => clearTimeout(timer);
-    }, [html, dark, ready]);
+    }, [html, dark]);
 
     return (
         <div className="h-full flex flex-col">
             <div className="flex justify-end px-3 py-1 border-b">
-                <button onClick={() => setDark((d) => !d)} className="text-sm underline">
+                <button onClick={() => setDark((value) => !value)} className="text-sm underline">
                     {dark ? "라이트 모드" : "다크 모드"}
                 </button>
             </div>
-            <iframe ref={iframeRef} src="/admin/preview" className="flex-1 w-full" title="preview" />
+            <iframe sandbox="" srcDoc={documentHtml} className="flex-1 w-full" title="글 미리보기" />
         </div>
     );
 };

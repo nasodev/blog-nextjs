@@ -67,7 +67,7 @@ npm run lint      # ESLint
 ```
 
 - **글 작성/수정**: MDX가 아니라 `/admin` 에디터에서 HTML 본문을 직접 작성 (`components/Admin/PostEditor.tsx`)
-- **저장 즉시 반영**: 저장/삭제 시 `requestRevalidate(slug)` 호출 → `app/api/revalidate/route.ts`가 공유 시크릿 검증 후 해당 글 태그 + `"posts"` 태그를 즉시 만료
+- **저장 즉시 반영**: 저장/삭제 시 `requestRevalidate(slug)` 호출 → `app/api/revalidate/route.ts`가 Firebase ID 토큰의 backend 관리자 권한 검증 후 해당 글 태그 + `"posts"` 태그를 즉시 만료
 - **빌드 타임 SSG**: `generateStaticParams()`가 빌드 중 `NEXT_PUBLIC_API_URL`로 전체 글 목록을 fetch — 이후에는 태그 기반 on-demand ISR로 갱신 (재빌드 불필요)
 - **레거시 원본**: `content/{slug}/index.mdx` (22개, Contentlayer 시절 글)는 참고용으로만 보존 — **마이그레이션 완료(2026-07-26)**: `scripts/migration/`의 변환기(convert.mjs)·적재기(load_posts.py)로 전량 HTML 변환 후 프로덕션 DB 적재됨. 빌드·서빙에는 쓰이지 않음
 
@@ -95,8 +95,8 @@ npm run lint      # ESLint
 - **댓글**: `components/Comments/index.tsx` - Giscus (GitHub Discussions)
 - **SEO**: `components/Blog/BlogPage.tsx` - 언어별 metadata + JSON-LD
 - **영문**: `/en` 경로, `en-{원문 slug}` API 레코드, `/admin`의 영문 작성·수정. 언어별 루트 레이아웃은 `app/(ko)`와 `app/(en)/en`. 상세 규약은 README의 English posts 참고
-- **관리자 에디터**: `/admin` (Firebase Google 로그인 필요, `AuthGate.tsx`) - 글 목록/작성/수정/삭제, CodeMirror 편집 + 초안 로컬 백업 + `/admin/preview` iframe 실시간 프리뷰
-- **온디맨드 재검증**: `app/api/revalidate/route.ts` - `x-revalidate-secret` 헤더 검증 후 `revalidateTag(tag, { expire: 0 })`; 에디터 저장/삭제 시 자동 호출
+- **관리자 에디터**: `/admin` (Firebase Google 로그인 필요, `AuthGate.tsx`) - 글 목록/작성/수정/삭제, CodeMirror 편집 + 초안 로컬 백업 + sandbox iframe 실시간 프리뷰
+- **온디맨드 재검증**: `app/api/revalidate/route.ts` - Firebase Bearer 토큰 또는 서버 전용 `x-revalidate-secret` 검증 후 `revalidateTag(tag, { expire: 0 })`; 에디터 저장/삭제 시 자동 호출
 
 ## Blog Post Format
 
@@ -167,9 +167,8 @@ Dark mode: `darkMode: "class"`, localStorage 기반
 # backend-api 베이스 URL — 빌드 타임 인라인 (next.config.ts images.remotePatterns도 함께 확인)
 NEXT_PUBLIC_API_URL=http://localhost:28000      # 로컬. 프로덕션: https://api.funq.kr
 
-# /api/revalidate 보호용 공유 시크릿 — 두 값을 동일하게 설정
-REVALIDATE_SECRET=dev-secret                     # 서버 런타임 전용, build arg 아님
-NEXT_PUBLIC_REVALIDATE_SECRET=dev-secret         # 클라이언트(에디터)가 헤더로 전송
+# 서버 간 webhook용 선택 설정. 에디터는 Firebase ID 토큰 사용
+REVALIDATE_SECRET=                               # 서버 런타임 전용, 클라이언트에 공개 금지
 
 # Firebase Web SDK (funq-auth 프로젝트 공용, /admin Google 로그인)
 NEXT_PUBLIC_FIREBASE_API_KEY=...
@@ -197,7 +196,7 @@ GitHub Actions (`main` 브랜치 push 시 자동 배포):
 2. Docker 이미지 빌드 (build-args로 `NEXT_PUBLIC_*` 주입) → GHCR push
 3. SSH로 서버 배포
 
-**필요 GitHub Secrets**: `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `SSH_PORT`, `GHCR_TOKEN`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_REVALIDATE_SECRET`, `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID` (`REVALIDATE_SECRET`은 GitHub Secret이 아니라 서버 `.env.prod`에만 필요 — 아래 서버 초기 설정 참고)
+**필요 GitHub Secrets**: `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `SSH_PORT`, `GHCR_TOKEN`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID` (`REVALIDATE_SECRET`은 GitHub Secret이 아니라 서버 `.env.prod`에만 필요 — 아래 서버 초기 설정 참고)
 
 ### 수동 배포
 
