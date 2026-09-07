@@ -5,7 +5,8 @@ export default defineConfig({
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 1 : 0,
-    workers: process.env.CI ? 1 : 2,
+    // A single dev server writes route manifests and shares cache invalidation state.
+    workers: process.env.CI || process.env.BLOG_E2E ? 1 : 2,
     reporter: "html",
     use: {
         baseURL: "http://127.0.0.1:23002",

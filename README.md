@@ -41,6 +41,9 @@ backend-api가 로컬(포트 28000)에서 떠 있어야 한다. 환경변수는 
 ```bash
 npm run build     # 프로덕션 빌드 (빌드 중 backend-api 호출 — SSG)
 npm run lint      # ESLint
+npm run typecheck # Next route types + TypeScript
+npm run test:unit # API/피드/언어 등 단위 회귀 검사
+npm run test:e2e  # 로컬 mock API + Chromium 회귀 검사
 ```
 
 ## Writing Posts
@@ -58,9 +61,13 @@ npm run lint      # ESLint
 언어별 URL과 상호 `hreflang`은 [Google 다국어 페이지 지침](https://developers.google.com/search/docs/specialty/international/localized-versions)을 따른다. 루트 레이아웃은 `app/(ko)`와 `app/(en)/en`으로 나누어 서버 HTML의 `lang`도 맞춘다.
 
 ```bash
-npx playwright test tests/i18n.spec.ts --project=chromium --reporter=line
+npm run test:unit
 ```
 
 ## Deployment
 
 `main` push 시 GitHub Actions가 자동 배포: lint → Docker 이미지 빌드(GHCR) → SSH 배포. 상세는 `.github/workflows/deploy.yml`과 `CLAUDE.md`의 Deployment 섹션 참고.
+
+## Regression tests
+
+처음에는 `npx playwright install chromium`으로 브라우저를 설치한다. `npm run test:e2e`는 127.0.0.1의 23002(Next)/28001(mock API) 포트를 사용하고, 실제 관리자 계정이나 backend가 필요 없다. 영역별 분석은 `docs/improvements/`에 기록한다.
