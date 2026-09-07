@@ -7,7 +7,7 @@
 
 | 우선순위 | 근거 | 문제/필요 | 구현 |
 |---|---|---|---|
-| 높음 | `components/Contact/ContactForm.tsx` | 문의 제출이 console.log뿐이며 운영 빌드에서는 이것도 제거됨 | 이름·이메일·문의 필수 입력과 길이 제한을 갖춘 폼. URLSearchParams로 안전하게 인코딩한 이메일 초안을 기본 이메일 앱에 전달 |
+| 높음 | `components/Contact/ContactForm.tsx` | 문의 제출이 console.log뿐이며 운영 빌드에서는 이것도 제거됨 | 이름·이메일·문의 필수 입력과 길이 제한을 갖춘 폼. encodeURIComponent로 안전하게 인코딩한 이메일 초안을 기본 이메일 앱에 전달 |
 | 중간 | 글 상세 | 방문자가 글 주소를 쉽게 공유할 경로가 없음 | 한국어/영어 링크 복사 버튼. 성공 안내와 클립보드 거부 시 직접 선택 가능한 주소 제공 |
 | 중간 | `components/Footer/index.tsx` | RSS 엔드포인트가 있으나 구독 링크를 찾기 어려움 | 한국어/영어 RSS를 푸터에 노출. 연도도 현재 연도로 표시 |
 

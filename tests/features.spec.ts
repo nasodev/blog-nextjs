@@ -8,6 +8,7 @@ test("contact drafts preserve Korean, special characters and line breaks without
     data.set("email", "hello+blog@example.com");
     data.set("message", "Next.js 문의\nA&B? #기능\nbcc: nobody@example.com");
     const url = new URL(contactMailto(data));
+    expect(contactMailto(data)).not.toContain("+"); // mailto uses %20, not form-encoded spaces.
     expect(url.protocol).toBe("mailto:");
     expect(url.pathname).toBe(siteMetaData.email);
     expect([...url.searchParams.keys()]).toEqual(["subject", "body"]);

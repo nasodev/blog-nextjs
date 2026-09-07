@@ -8,6 +8,5 @@ export function contactMailto(data: FormData) {
         "",
         String(data.get("message") ?? "").trim(),
     ].join("\n");
-    const params = new URLSearchParams({ subject: "블로그 프로젝트 문의", body });
-    return `mailto:${siteMetaData.email}?${params}`;
+    return `mailto:${siteMetaData.email}?subject=${encodeURIComponent("블로그 프로젝트 문의")}&body=${encodeURIComponent(body)}`;
 }
