@@ -5,10 +5,11 @@ import { useSyncExternalStore } from "react";
 const themeQuery = "(prefers-color-scheme: dark)";
 const getSnapshot = () => document.documentElement.classList.contains("dark") ? "dark" : "light";
 const getServerSnapshot = () => null;
+let memoryTheme: string | null = null;
 
 function savedTheme() {
     try { return localStorage.getItem("theme"); }
-    catch { return null; }
+    catch { return memoryTheme; }
 }
 
 function subscribe(onChange: () => void) {
@@ -27,6 +28,7 @@ function subscribe(onChange: () => void) {
     };
     media.addEventListener("change", onSystemChange);
     window.addEventListener("storage", onStorage);
+    onSystemChange(); // Catch preference changes between the inline script and hydration.
     return () => {
         observer.disconnect();
         media.removeEventListener("change", onSystemChange);
@@ -38,7 +40,7 @@ const setTheme = (theme: string) => {
     if (theme !== "light" && theme !== "dark") return;
     document.documentElement.classList.toggle("dark", theme === "dark");
     try { localStorage.setItem("theme", theme); }
-    catch { /* A blocked storage area must not disable the theme button. */ }
+    catch { memoryTheme = theme; }
 };
 
 const useThemeSwitch = () => {
