@@ -15,7 +15,7 @@ test("revalidation requires real admin authorization and security headers are se
 });
 
 test("the preview iframe blocks injected scripts and access to its parent", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("about:blank");
     await page.setContent(renderToStaticMarkup(createElement(EditorPreview, { html: "" })));
     const iframe = page.locator("iframe");
     await expect(iframe).toHaveAttribute("sandbox", "");
