@@ -1,6 +1,7 @@
 import BlogDetails from "@/components/Blog/BlogDetails";
 import BlogLayoutThree from "@/components/Blog/BlogLayoutThree";
 import PostBody from "@/components/Blog/PostBody";
+import SharePost from "@/components/Blog/SharePost";
 import Tag from "@/components/Elements/tag";
 import TagList from "@/components/Elements/TagList";
 import Comments from "@/components/Comments";
@@ -186,6 +187,7 @@ export default async function BlogPage({ slug, locale }: { slug: string; locale:
                     </div>
                     <PostBody html={post.content_html} />
                 </div>
+                <SharePost url={postUrl} locale={locale} />
                 {(olderPost || newerPost) && (
                     <nav aria-label={locale === "en" ? "Previous and next posts" : "이전/다음 글"} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-12 px-5 md:px-10">
                         {olderPost ? (

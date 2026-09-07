@@ -21,7 +21,11 @@ const Footer = () => {
             </div>
 
             <div className="w-full mt-16 md:mt-24 relative font-medium border-t border-solid border-light py-6 px-8 flex flex-col md:flex-row items-center justify-between">
-                <span>&copy;2024 FunDev. All rights reserved.</span>
+                <span>&copy;{new Date().getFullYear()} FunDev. All rights reserved.</span>
+                <nav aria-label="RSS 구독" className="flex gap-4 my-4 md:my-0">
+                    <a href="/feed.xml" className="underline" type="application/rss+xml">한국어 RSS</a>
+                    <a href="/en/feed.xml" className="underline" type="application/rss+xml" lang="en">English RSS</a>
+                </nav>
                 <Link href="/sitemap.xml" className="text-center underline my-4 md:my-0">
                     sitemap.xml
                 </Link>
