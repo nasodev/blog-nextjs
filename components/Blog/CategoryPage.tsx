@@ -38,13 +38,17 @@ export async function categoryMetadata(categorySlug: string, locale: Locale) {
             languages[language] = siteMetaData.siteUrl + localePath(path, language);
         }
     }
-    const title = `${categorySlug} Blogs`;
+    if (languages.ko || languages.en) languages["x-default"] = languages.ko ?? languages.en;
+    const categoryName = matchingPosts.flatMap((post) => post.tags).find((tag) => slug(tag) === categorySlug) ?? categorySlug;
+    const title = categorySlug === "all"
+        ? locale === "en" ? "All posts" : "전체 글"
+        : locale === "en" ? `${categoryName} posts` : `${categoryName} 관련 글`;
     const description =
         locale === "en"
-            ? categorySlug === "all" ? "All posts about AI and coding" : `Posts about ${categorySlug}`
+            ? categorySlug === "all" ? "All posts about AI and coding" : `Posts about ${categoryName}`
             : categorySlug === "all"
             ? "AI와 코딩에 관한 모든 블로그 글 목록"
-            : `${categorySlug} 관련 블로그 글 목록`;
+            : `${categoryName} 관련 블로그 글 목록`;
 
     return {
         title,
@@ -54,6 +58,11 @@ export async function categoryMetadata(categorySlug: string, locale: Locale) {
             canonical: localePath(path, locale),
             languages,
             types: { "application/rss+xml": feedPath(locale) },
+        },
+        twitter: {
+            card: "summary_large_image" as const,
+            title, description,
+            images: [siteMetaData.siteUrl + siteMetaData.socialBanner],
         },
         // openGraph도 layout 값을 통째로 대체하므로 images/siteName/locale/type까지 채운다
         openGraph: {

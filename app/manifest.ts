@@ -4,10 +4,13 @@ import { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
     return {
         name: siteMetaData.title,
-        short_name: siteMetaData.title,
+        short_name: siteMetaData.headerTitle,
         description: siteMetaData.description,
         start_url: "/",
         display: "standalone",
+        lang: "ko",
+        background_color: "#ffffff",
+        theme_color: "#7b00d3",
         icons: [
             {
                 src: "/favicon/favicon-16x16.png",
@@ -27,11 +30,6 @@ export default function manifest(): MetadataRoute.Manifest {
             {
                 src: "/favicon/android-chrome-512x512.png",
                 sizes: "512x512",
-                type: "image/png",
-            },
-            {
-                src: "/favicon/apple-touch-icon.png",
-                sizes: "180x180",
                 type: "image/png",
             },
         ],

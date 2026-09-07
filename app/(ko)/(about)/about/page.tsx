@@ -13,6 +13,12 @@ export const metadata = {
         canonical: "/about",
         types: { "application/rss+xml": "/feed.xml" },
     },
+    twitter: {
+        card: "summary_large_image" as const,
+        title: "About Me",
+        description: aboutDescription,
+        images: [siteMetaData.siteUrl + siteMetaData.socialBanner],
+    },
     openGraph: {
         title: `About Me | ${siteMetaData.title}`,
         description: aboutDescription,

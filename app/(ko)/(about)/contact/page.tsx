@@ -11,6 +11,12 @@ export const metadata = {
         canonical: "/contact",
         types: { "application/rss+xml": "/feed.xml" },
     },
+    twitter: {
+        card: "summary_large_image" as const,
+        title: "Contact Me",
+        description: contactDescription,
+        images: [siteMetaData.siteUrl + siteMetaData.socialBanner],
+    },
     openGraph: {
         title: `Contact Me | ${siteMetaData.title}`,
         description: contactDescription,
