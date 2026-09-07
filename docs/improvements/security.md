@@ -12,6 +12,7 @@
 | 높음/낮음 | `package-lock.json`, npm audit | 취약 패키지 8개: high 7, low 1. 개발 도구의 전이 의존성과 이미지 처리 런타임을 포함 | Next.js/eslint-config-next 16.3.4 및 호환 범위 전이 의존성 갱신. 변경 후 npm audit: 0건 |
 | 중간 | `app/api/revalidate/route.ts` | 잘못된 JSON을 전체 캐시 무효화 요청처럼 처리, slug 길이 제한 없음 | JSON 객체 검증·200자 제한. 인증 서비스 장애는 503으로 종료. 외부 요청에 5초 제한 |
 | 보강 | `next.config.ts` | object/base/frame 정책 미설정 | CSP의 object-src/base-uri/frame-ancestors, 불필요한 기기 권한 차단, X-Powered-By 제거 |
+| 보강 | `.gitignore` | 기존 규칙이 `.env.local` 계열만 제외해 `.env`/`.env.production`을 실수로 추가할 수 있음 | 환경 파일 전체를 제외하고 `.env.example`만 추적 허용. git check-ignore로 확인 |
 
 ## 검증
 
