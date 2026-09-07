@@ -35,3 +35,11 @@
 - [RSS 2.0 명세](https://www.rssboard.org/rss-specification): XML 문법, enclosure 실제 바이트 길이, lastBuildDate 의미.
 - [Next.js metadata](https://nextjs.org/docs/app/api-reference/functions/generate-metadata): 페이지별 메타데이터 생성과 상속.
 - [Google 다국어 페이지](https://developers.google.com/search/docs/specialty/international/localized-versions): 언어별 URL과 상호 참조.
+
+## 최종 검증 결과 (2026-09-07)
+
+- 다섯 영역의 변경을 합친 `codex/blog-integrated-20260907`에서 단위 검사 4건, 브라우저 회귀 검사 11건 통과.
+- 마지막 모바일 문의 레이아웃 변경 후 관련 4건, 테마 아이콘 수정 후 UI 2건을 다시 검사해 통과.
+- 최종 소스의 ESLint 및 Next.js 16.3.4 프로덕션 빌드(TypeScript 검사 포함) 통과. 로컬 mock API와 테스트용 Firebase 설정을 사용해 35개 페이지를 생성했다.
+- standalone 서버에서 공개 페이지·피드·사이트맵·관리자 noindex·JS 정적 파일과 잘못된 글 주소의 404를 확인했다.
+- 운영 배포·실제 관리자 계정·이메일 발송·검색엔진 제출은 수행하지 않았다. 운영 환경에만 적용 가능한 항목은 위 후속 목록에 남겼다.
