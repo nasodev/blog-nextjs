@@ -162,7 +162,7 @@ export default async function BlogPage({ slug, locale }: { slug: string; locale:
                     <div className="col-span-12 md:col-span-3">
                         <details className="border-[1px] border-solid border-dark dark:border-light text-dark dark:text-light rounded-lg p-4 sticky top-6 max-h-[80vh] overflow-hidden overflow-y-auto">
                             <summary className="text-lg font-semibold capitalize cursor-pointer">
-                                Table of Contents
+                                {locale === "en" ? "Table of Contents" : "목차"}
                             </summary>
                             <ul className="mt-4 font-in text-base">
                                 {post.toc.map((heading) => (
@@ -175,7 +175,7 @@ export default async function BlogPage({ slug, locale }: { slug: string; locale:
                                         flex items-center justify-start"
                                         >
                                             {heading.level == "three" ? (
-                                                <span className="flex w-1 h-1 rouned-full bg-dark mr-2">&nbsp;</span>
+                                                <span className="flex w-1 h-1 rounded-full bg-dark mr-2">&nbsp;</span>
                                             ) : null}
                                             <span className="hover:underline">{heading.text}</span>
                                         </a>

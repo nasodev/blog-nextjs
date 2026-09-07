@@ -6,6 +6,27 @@ html {
     scroll-behavior: smooth;
 }
 
+:focus-visible {
+    outline: 2px solid #7b00d3;
+    outline-offset: 4px;
+}
+
+.dark :focus-visible { outline-color: #ffdb4d; }
+
+.post-body { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.post-body :where(pre, table) { max-width: 100%; overflow-x: auto; }
+.post-body table { display: block; }
+.post-body :where(h2, h3)[id] { scroll-margin-top: 6rem; }
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
 h1>a>.icon.icon-link:before,
 h2>a>.icon.icon-link:before,
 h3>a>.icon.icon-link:before{

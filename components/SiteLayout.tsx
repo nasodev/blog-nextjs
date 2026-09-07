@@ -70,8 +70,11 @@ export default function SiteLayout({ children, locale }: { children: React.React
                         __html: `try{if(localStorage.getItem("theme")==="dark"||(!("theme" in localStorage)&&window.matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark")}else{document.documentElement.classList.remove("dark")}}catch(e){}`,
                     }}
                 />
+                <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:p-3 bg-light text-dark rounded-lg">
+                    {locale === "en" ? "Skip to content" : "본문 바로가기"}
+                </a>
                 <Header locale={locale} />
-                {children}
+                <div id="main-content" tabIndex={-1}>{children}</div>
                 <Footer />
             </body>
         </html>

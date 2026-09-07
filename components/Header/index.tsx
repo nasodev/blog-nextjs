@@ -21,6 +21,7 @@ const Header = ({ locale = "ko" }: { locale?: Locale }) => {
     const { theme, setTheme } = useThemeSwitch();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const searchRef = useRef<SearchHandle>(null);
+    const menuRef = useRef<HTMLButtonElement>(null);
 
     const handleMenuToggle = () => {
         searchRef.current?.close();
@@ -33,7 +34,7 @@ const Header = ({ locale = "ko" }: { locale?: Locale }) => {
     return (
         <header className="w-full p-4 px-5 sm:px-10 flex items-center justify-between">
             <Logo locale={locale} />
-            <button className="inline-flex md:hidden relative w-8 h-8 items-center justify-center z-[60]" onClick={handleMenuToggle} aria-controls="main-navigation" aria-expanded={isMenuOpen} aria-label={locale === "en" ? isMenuOpen ? "Close menu" : "Open menu" : isMenuOpen ? "메뉴 닫기" : "메뉴 열기"}>
+            <button ref={menuRef} className="inline-flex md:hidden relative w-11 h-11 items-center justify-center z-[60]" onClick={handleMenuToggle} aria-controls="main-navigation" aria-expanded={isMenuOpen} aria-label={locale === "en" ? isMenuOpen ? "Close menu" : "Open menu" : isMenuOpen ? "메뉴 닫기" : "메뉴 열기"}>
                 <div className="w-6 cursor-pointer transition-all ease duration-300">
                     <div className="relative">
                         <span
@@ -59,18 +60,23 @@ const Header = ({ locale = "ko" }: { locale?: Locale }) => {
             </button>
             <nav
                 id="main-navigation"
+                aria-label={locale === "en" ? "Main navigation" : "주 메뉴"}
+                onClick={(event) => { if ((event.target as Element).closest("a")) setIsMenuOpen(false); }}
+                onKeyDown={(event) => {
+                    if (event.key === "Escape" && isMenuOpen) { setIsMenuOpen(false); menuRef.current?.focus(); }
+                }}
                 className={`w-max max-w-[calc(100vw-1rem)] py-3 px-3 md:px-8 text-sm md:text-base border border-solid border-dark rounded-full font-medium capitalize items-center justify-center flex-wrap fixed right-1/2 translate-x-1/2
-                    bg-light/80 backdrop-blur-sm z-50 transition-all duration-300 ease
+                    bg-light/95 dark:bg-dark/95 text-dark dark:text-light dark:border-light/40 backdrop-blur-sm z-50 transition-all duration-300 ease
                     ${isMenuOpen ? "flex top-20" : "hidden md:flex"} md:top-4`}
             >
                 <Link href={localePath("/", locale)} className="mr-2">
-                    Home
+                    {locale === "en" ? "Home" : "홈"}
                 </Link>
                 <Link href="/about" className="mx-2">
-                    About
+                    {locale === "en" ? "About" : "소개"}
                 </Link>
                 <Link href="/contact" className="mx-2">
-                    Contact
+                    {locale === "en" ? "Contact" : "문의"}
                 </Link>
                 <Link href={locale === "en" ? "/" : "/en"} hrefLang={locale === "en" ? "ko" : "en"} lang={locale === "en" ? "ko" : "en"} className="mx-2 whitespace-nowrap text-sm">
                     {locale === "en" ? "한국어" : "English"}
@@ -79,7 +85,7 @@ const Header = ({ locale = "ko" }: { locale?: Locale }) => {
                 <button
                     onClick={() => setTheme(theme === "light" ? "dark" : "light")}
                     aria-label={locale === "en" ? "Toggle theme" : "테마 전환"}
-                    className="w-6 h-6 ease ml-2 flex items-center justify-center rounded-full p-1 bg-dark text-light dark:bg-light dark:text-dark"
+                    className="w-11 h-11 ease ml-2 flex items-center justify-center rounded-full p-1 bg-dark text-light dark:bg-light dark:text-dark"
                 >
                     <MoonIcon className="dark:hidden fill-dark" />
                     <SunIcon className="hidden dark:inline-block fill-light" />
