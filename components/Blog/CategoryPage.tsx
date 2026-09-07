@@ -1,4 +1,4 @@
-import BlogGridInfinite from "@/components/Blog/BlogGridInfinite";
+import BlogGrid from "@/components/Blog/BlogGrid";
 import Categories from "@/components/Blog/Categories";
 import { getPublishedPosts, getAllPublishedPosts } from "@/lib/api/posts";
 import { slug } from "github-slugger";
@@ -106,7 +106,7 @@ const CategoryPage = async ({ slug: categorySlug, locale }: { slug: string; loca
             </div>
             <Categories categories={allCategories} currentSlug={categorySlug} locale={locale} />
 
-            <BlogGridInfinite blogs={sortedBlogs} itemsPerPage={9} />
+            <BlogGrid blogs={sortedBlogs} />
         </article>
     );
 };

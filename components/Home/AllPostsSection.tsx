@@ -1,8 +1,6 @@
-"use client";
-
 import { BlogSummary } from "@/utils/blogData";
 import { sortBlogs } from "@/utils";
-import BlogGridInfinite from "@/components/Blog/BlogGridInfinite";
+import BlogGrid from "@/components/Blog/BlogGrid";
 
 interface AllPostsSectionProps {
     blogs: BlogSummary[];
@@ -21,7 +19,7 @@ const AllPostsSection = ({ blogs }: AllPostsSectionProps) => {
                     {sortedBlogs.length} posts
                 </span>
             </div>
-            <BlogGridInfinite blogs={sortedBlogs} itemsPerPage={9} />
+            <BlogGrid blogs={sortedBlogs} />
         </section>
     );
 };

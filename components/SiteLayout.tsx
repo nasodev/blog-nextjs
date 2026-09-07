@@ -67,7 +67,7 @@ export default function SiteLayout({ children, locale }: { children: React.React
                     beforeInteractive여도 프레임워크 부트스트랩 이후에 실행되므로 쓰지 않는다 */}
                 <script
                     dangerouslySetInnerHTML={{
-                        __html: `try{if(localStorage.getItem("theme")==="dark"||(!("theme" in localStorage)&&window.matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark")}else{document.documentElement.classList.remove("dark")}}catch(e){}`,
+                        __html: `var savedTheme;try{savedTheme=localStorage.getItem("theme")}catch(e){}document.documentElement.classList.toggle("dark",savedTheme==="dark"||(savedTheme!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches))`,
                     }}
                 />
                 <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:p-3 bg-light text-dark rounded-lg">

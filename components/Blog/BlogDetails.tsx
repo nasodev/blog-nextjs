@@ -13,7 +13,7 @@ const BlogDetails = ({ blog, slug: blogSlug }: { blog: BlogSummary; slug: string
                 {format(parseISO(blog.publishedAt), "LLLL d, yyyy")}
             </time>
             <span className="m-3">
-                <ViewCounter slug={blogSlug} />
+                <ViewCounter slug={blogSlug} initialViews={blog.viewCount} />
             </span>
             <div className="m-3">{blog.readingTime}</div>
             <Link href={localePath(`/categories/${blog.tags[0] ? slug(blog.tags[0]) : "all"}`, blog.locale)} className="m-3">

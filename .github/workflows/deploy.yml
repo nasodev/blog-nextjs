@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
@@ -27,6 +27,17 @@ jobs:
 
       - name: Run lint
         run: npm run lint
+
+      - name: Check types and unit regressions
+        run: |
+          npm run typecheck
+          npm run test:unit
+
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Test local blog with mock API
+        run: npm run test:e2e
 
   # Job 2: Build and push Docker image
   build-and-push:

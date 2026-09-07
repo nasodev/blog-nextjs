@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -H 0.0.0.0",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "playwright test --project=unit --reporter=line",
+    "test:e2e": "BLOG_E2E=1 playwright test --project=chromium --reporter=line"
   },
   "dependencies": {
     "@codemirror/lang-html": "^6.4.11",
