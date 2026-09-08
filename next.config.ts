@@ -7,12 +7,6 @@ const nextConfig: NextConfig = {
     poweredByHeader: false,
     agentRules: false,
 
-    experimental: {
-        // (ko)/(en) 두 루트 레이아웃 구조에서는 그룹 위쪽에 사이트 셸을 둘 수 없어,
-        // 매칭되지 않는 URL 의 전역 404 가 Next 기본 셸로 렌더된다.
-        // app/global-not-found.tsx 를 활성화해 헤더·푸터·lang 을 되살린다.
-        globalNotFound: true,
-    },
 
     images: {
         formats: ["image/avif", "image/webp"],
