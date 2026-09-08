@@ -13,10 +13,15 @@ html {
 
 .dark :focus-visible { outline-color: #ffdb4d; }
 
-.post-body { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.post-body { min-width: 0; max-width: 100%; overflow-wrap: break-word; }
 .post-body :where(pre, table) { max-width: 100%; overflow-x: auto; }
-.post-body table { display: block; }
 .post-body :where(h2, h3)[id] { scroll-margin-top: 6rem; }
+
+/* 스킵 링크로 프로그램 포커스된 래퍼에 전체 화면 윤곽선이 그려지는 것을 막는다 */
+#main-content:focus-visible { outline: none; }
+
+/* <dialog> 미지원 브라우저에서 검색 패널이 인라인으로 노출되지 않게 한다 */
+dialog:not([open]) { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }

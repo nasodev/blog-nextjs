@@ -40,7 +40,15 @@ npm run dev -- -p 23001
 npm run build     # 프로덕션 빌드 (SSG가 빌드 중 backend-api를 호출 — 아래 Build Notes 참고)
 npm run start     # 프로덕션 서버
 npm run lint      # ESLint
+npm run typecheck # next typegen + tsc --noEmit (순서가 중요 — typegen 이 .next/types 를 만든다)
+npm run test:unit # Playwright unit 프로젝트 (브라우저 불필요)
+npm run test:e2e  # BLOG_E2E=1 + chromium. mock API(28001) 와 dev 서버(23002) 를 자동 기동
+npm run test      # unit + e2e
 ```
+
+`test:e2e` 는 `npx playwright install chromium` 이 먼저 필요하다. 자체 dev 서버를 23002 에
+띄우지만 `.next/` 를 개발용 서버(23001)와 공유하므로, 함께 돌리면 Turbopack 캐시와
+`NEXT_PUBLIC_*` 인라인 값이 섞일 수 있다 — 테스트 전에 개발 서버를 내리는 것이 안전하다.
 
 ### 포트 구성
 
@@ -191,10 +199,16 @@ Ubuntu Server
 
 ### CI/CD
 
-GitHub Actions (`main` 브랜치 push 시 자동 배포):
-1. Lint 검사
+`.github/workflows/deploy.yml` — `main` 브랜치 push 시 자동 배포:
+1. `lint` 잡: ESLint → `npm run typecheck` → `npm run test:unit` → chromium 설치 → `npm run test:e2e`
 2. Docker 이미지 빌드 (build-args로 `NEXT_PUBLIC_*` 주입) → GHCR push
 3. SSH로 서버 배포
+
+**2·3단계는 `needs: lint` 로 1단계에 묶여 있다.** 즉 브라우저 회귀 테스트가 실패하거나
+러너에서 flaky 하면 배포 자체가 진행되지 않는다. 실패 시 `test-results/` 가 아티팩트로
+업로드된다.
+
+`.github/workflows/playwright.yml` — PR 전용으로 같은 검사를 수행 (main push 는 deploy.yml 이 담당).
 
 **필요 GitHub Secrets**: `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `SSH_PORT`, `GHCR_TOKEN`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID` (`REVALIDATE_SECRET`은 GitHub Secret이 아니라 서버 `.env.prod`에만 필요 — 아래 서버 초기 설정 참고)
 
@@ -241,5 +255,6 @@ blog-nextjs/
 │   └── docker-setup.sh      # 서버 초기 설정 스크립트
 └── .github/
     └── workflows/
-        └── deploy.yml       # CI/CD 파이프라인
+        ├── deploy.yml       # main push → 검사 게이트 + 빌드 + 배포
+        └── playwright.yml   # PR 전용 검사
 ```
