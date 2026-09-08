@@ -148,5 +148,23 @@ jobs:
               exit 1
             fi
 
+            # Purge the data cache.
+            # A fresh container starts from the data baked into the image at build
+            # time, so any post published after that build is missing from the home,
+            # category and sitemap pages until the "posts" tag is revalidated.
+            # The secret is server-only and read from .env.prod; the editor itself
+            # authenticates with a Firebase ID token and does not need it.
+            SECRET=$(grep '^REVALIDATE_SECRET=' /home/funq/dev/config/blog-nextjs/.env.prod 2>/dev/null | sed 's/^REVALIDATE_SECRET=//' | tr -d '\r\n')
+            if [ -n "$SECRET" ]; then
+              RV=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
+                -X POST http://localhost:3000/api/revalidate \
+                -H 'Content-Type: application/json' \
+                -H "x-revalidate-secret: $SECRET" -d '{}')
+              echo "Revalidate after deploy: HTTP $RV"
+              [ "$RV" = "200" ] || echo "WARNING: revalidate did not return 200 — new posts may not appear until the next publish"
+            else
+              echo "Revalidate skipped: REVALIDATE_SECRET is not set in .env.prod"
+            fi
+
             # Clean up old images
             docker image prune -f
