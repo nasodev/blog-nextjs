@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signInCommentTestUser } from "./comment-auth";
+import { signInCommentTestUser, switchCommentTestUser } from "./comment-auth";
 
 test("administrators can moderate guest comments and follow the published English variant", async ({ page }) => {
     const token = await signInCommentTestUser(page, "comment-admin");
@@ -22,4 +22,21 @@ test("administrators can moderate guest comments and follow the published Englis
     await page.getByRole("button", { name: "삭제", exact: true }).click();
     await expect(page.getByText("관리할 댓글", { exact: true })).toHaveCount(0);
     expect(deleted).toBe(true);
+});
+
+test("changing admin accounts clears the previous account's moderation data", async ({ page }) => {
+    const adminToken = await signInCommentTestUser(page, "comment-admin");
+    await page.route("**/blog/admin/comments**", (route) => {
+        if (route.request().headers().authorization !== `Bearer ${adminToken}`) return route.fulfill({ status: 403, json: { detail: "Admin required" } });
+        return route.fulfill({ json: { items: [{
+            id: "00000000-0000-4000-8000-000000000017", thread_slug: "private-post", post_slug: null, parent_id: null,
+            author_type: "guest", author_name: "방문자", content: "비공개 글의 관리 댓글", created_at: "2026-09-26T00:00:00Z", updated_at: "2026-09-26T00:00:00Z",
+            is_deleted: false, can_edit: false, can_delete: true, source_url: null,
+        }], next_cursor: null, total: 1 } });
+    });
+    await page.goto("/admin/comments");
+    await expect(page.getByText("비공개 글의 관리 댓글", { exact: true })).toBeVisible();
+    await switchCommentTestUser(page, "not-an-admin");
+    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(page.getByText("비공개 글의 관리 댓글", { exact: true })).toHaveCount(0);
 });

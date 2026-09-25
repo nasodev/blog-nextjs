@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import type { Locale } from "@/lib/i18n";
-import { ApiComment, CommentPage, createComment, deleteComment, listComments, updateComment } from "@/lib/api/comments";
+import { ApiComment, CommentApiError, CommentPage, createComment, deleteComment, getComment, listComments, updateComment } from "@/lib/api/comments";
 import { getIdToken, onAuthChange, signInWithGoogle, signOutUser } from "@/lib/firebase";
 import CommentForm, { CommentFormValue } from "./CommentForm";
 import CommentItem, { CommentAction } from "./CommentItem";
@@ -29,21 +29,24 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [revision, setRevision] = useState(0);
-    const [action, setAction] = useState<{ id: string; kind: CommentAction } | null>(null);
+    const [action, setAction] = useState<{ id: string; kind: CommentAction; serial: number } | null>(null);
     const [notice, setNotice] = useState("");
     const generation = useRef(0);
     const pageInFlight = useRef(false);
-    const hasLoaded = useRef(false);
     const viewerUid = useRef<string | null>(null);
+    const visibleIds = useRef<string[]>([]);
+    const loadedPages = useRef(1);
+    const actionSerial = useRef(0);
+
+    useEffect(() => { visibleIds.current = page.items.map((item) => item.id); }, [page.items]);
 
     useEffect(() => onAuthChange((nextUser) => {
         const nextUid = nextUser?.uid ?? null;
         if (viewerUid.current !== nextUid) {
             viewerUid.current = nextUid;
             generation.current++;
-            hasLoaded.current = false;
-            setPage({ items: [], next_cursor: null, total: 0 });
-            setAction(null);
+            // Keep the active form mounted while its viewer permissions refresh.
+            setPage((current) => ({ ...current, items: current.items.map((item) => ({ ...item, can_edit: false, can_delete: false })) }));
             setLoading(true);
         }
         setUser(nextUser);
@@ -53,15 +56,37 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
     useEffect(() => {
         const requestGeneration = ++generation.current;
         let active = true;
-        // An expired/offline identity must not prevent reading public comments.
-        getIdToken().catch(() => null).then((token) => listComments(slug, { token })).then((result) => {
+        async function loadSnapshot() {
+            // An expired/offline identity must not prevent reading public comments.
+            const token = await getIdToken().catch(() => null);
+            const wantedIds = visibleIds.current;
+            let result: CommentPage = { items: [], next_cursor: null, total: 0 };
+            let items: ApiComment[] = [];
+            let pagesRead = 0;
+            do {
+                result = await listComments(slug, { token, cursor: result.next_cursor });
+                if (!active || generation.current !== requestGeneration) return;
+                items = mergeComments(items, result.items);
+                pagesRead++;
+            } while (result.next_cursor && pagesRead < loadedPages.current);
+            // Locally posted rows can sit beyond the loaded pages. Refresh their
+            // current-viewer flags individually instead of downloading every page.
+            const foundIds = new Set(items.map((item) => item.id));
+            const pinned = await Promise.all(wantedIds.filter((id) => !foundIds.has(id)).map(async (id) => {
+                try { return await getComment(slug, id, token); }
+                catch (error) {
+                    if (error instanceof CommentApiError && error.status === 404) return null;
+                    throw error;
+                }
+            }));
             if (active && generation.current === requestGeneration) {
-                hasLoaded.current = true;
-                setPage((current) => ({ ...result, items: mergeComments(current.items, result.items) }));
+                loadedPages.current = pagesRead;
+                setPage({ ...result, items: mergeComments(items, pinned.filter((item): item is ApiComment => item !== null)) });
                 setError(null);
                 setLoading(false);
             }
-        }).catch((error) => {
+        }
+        loadSnapshot().catch((error) => {
             if (active && generation.current === requestGeneration) {
                 setError(commentError(error, locale));
                 setLoading(false);
@@ -70,11 +95,13 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
         return () => { active = false; };
     }, [slug, user?.uid, revision, locale]);
 
-    function finishMutation() {
-        generation.current++;
-        // A mutation can finish before the initial list. Fetch a new snapshot so
-        // cancelling that stale read never hides the pre-existing conversation.
-        if (!hasLoaded.current) setRevision((value) => value + 1);
+    function finishMutation(requestUid: string | null) {
+        const sameViewer = viewerUid.current === requestUid;
+        if (sameViewer) generation.current++;
+        // Always reconcile the authoritative count, including writes that finish
+        // after an identity change. Never apply the previous viewer's flags.
+        setRevision((value) => value + 1);
+        return sameViewer;
     }
 
     async function loadMore() {
@@ -86,6 +113,7 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
             const token = await getIdToken().catch(() => null);
             const next = await listComments(slug, { token, cursor: page.next_cursor });
             if (generation.current === requestGeneration) {
+                loadedPages.current++;
                 setPage((current) => ({ ...next, items: mergeComments(current.items, next.items) }));
                 setError(null);
             }
@@ -98,36 +126,45 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
     }
 
     async function create(value: CommentFormValue, parentId?: string) {
+        const requestUid = viewerUid.current;
         const token = value.author_type === "google" ? await getIdToken() : await getIdToken().catch(() => null);
+        if (value.author_type === "google" && requestUid !== viewerUid.current) throw new CommentApiError(401);
         const comment = await createComment(slug, { ...value, ...(parentId ? { parent_id: parentId } : {}) }, token);
-        finishMutation();
-        setPage((current) => ({ ...current, items: mergeComments(current.items, [comment]), total: current.total + 1 }));
-        setLoading(false);
-        setAction(null);
-        setNotice(copy.created);
+        if (finishMutation(requestUid)) {
+            setPage((current) => ({ ...current, items: mergeComments(current.items, [comment]) }));
+            setNotice(copy.created);
+        }
     }
 
     function actionForm(comment: ApiComment) {
         if (!action || action.id !== comment.id) return null;
-        const kind = action.kind;
+        const { kind, serial } = action;
         const needsPassword = comment.author_type === "guest" && (kind === "edit" || !(user && comment.can_delete));
-        return <CommentForm key={`${kind}-${comment.id}`} locale={locale} user={user} kind={kind}
+        return <CommentForm key={`${kind}-${comment.id}-${serial}`} locale={locale} user={user} kind={kind}
             initialContent={kind === "edit" ? comment.content : ""} needsPassword={needsPassword}
             onLogin={signInWithGoogle} onCancel={() => setAction(null)} onSubmit={async (value) => {
-                if (kind === "reply") { await create(value, comment.id); return; }
+                if (kind === "reply") {
+                    await create(value, comment.id);
+                    setAction((current) => current?.serial === serial ? null : current);
+                    return;
+                }
+                const requestUid = viewerUid.current;
                 const token = await getIdToken().catch(() => null);
+                if (requestUid !== viewerUid.current) throw new CommentApiError(401);
                 if (kind === "edit") {
                     const changed = await updateComment(slug, comment.id, { content: value.content, ...(value.password ? { password: value.password } : {}) }, token);
-                    finishMutation();
-                    setPage((current) => ({ ...current, items: mergeComments(current.items, [changed]) }));
-                    setNotice(copy.updated);
+                    if (finishMutation(requestUid)) {
+                        setPage((current) => ({ ...current, items: mergeComments(current.items, [changed]) }));
+                        setNotice(copy.updated);
+                    }
                 } else {
                     await deleteComment(slug, comment.id, value.password ? { password: value.password } : {}, token);
-                    finishMutation();
-                    setPage((current) => ({ ...current, total: Math.max(0, current.total - 1), items: current.items.map((item) => item.id === comment.id ? { ...item, is_deleted: true, content: "", author_name: "", can_edit: false, can_delete: false } : item) }));
-                    setNotice(copy.removed);
+                    if (finishMutation(requestUid)) {
+                        setPage((current) => ({ ...current, items: current.items.map((item) => item.id === comment.id ? { ...item, is_deleted: true, content: "", author_name: "", can_edit: false, can_delete: false } : item) }));
+                        setNotice(copy.removed);
+                    }
                 }
-                setAction(null);
+                setAction((current) => current?.serial === serial ? null : current);
             }} />;
     }
 
@@ -140,7 +177,7 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
 
     function renderComment(comment: ApiComment) {
         return <CommentItem key={comment.id} comment={comment} locale={locale} signedIn={!!user} active={action?.id === comment.id}
-            onAction={(kind) => { setAction({ id: comment.id, kind }); setNotice(""); }}>
+            onAction={(kind) => { setAction({ id: comment.id, kind, serial: ++actionSerial.current }); setNotice(""); }}>
             {actionForm(comment)}
         </CommentItem>;
     }

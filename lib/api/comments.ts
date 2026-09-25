@@ -65,6 +65,10 @@ export function createComment(slug: string, data: CommentCreate, token?: string 
     return commentFetch<ApiComment>(postComments(slug), { method: "POST", ...jsonBody(data) }, token);
 }
 
+export function getComment(slug: string, id: string, token?: string | null) {
+    return commentFetch<ApiComment>(`${postComments(slug)}/${encodeURIComponent(id)}`, {}, token);
+}
+
 export function updateComment(slug: string, id: string, data: { content: string; password?: string }, token?: string | null) {
     return commentFetch<ApiComment>(`${postComments(slug)}/${encodeURIComponent(id)}`, { method: "PATCH", ...jsonBody(data) }, token);
 }

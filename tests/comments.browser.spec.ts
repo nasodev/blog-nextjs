@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import type { ApiComment } from "../lib/api/comments";
-import { signInCommentTestUser } from "./comment-auth";
+import { signInCommentTestUser, switchCommentTestUser } from "./comment-auth";
 
 function comment(overrides: Partial<ApiComment> = {}): ApiComment {
     return {
@@ -116,11 +116,14 @@ test("Google commenters send their token and only receive their own edit control
 
 test("reply submissions keep their parent and offer only one reply level", async ({ page }) => {
     const root = comment();
+    const items = [root];
     await page.route("**/blog/posts/test-post-0/comments**", (route) => {
-        if (route.request().method() === "GET") return route.fulfill({ json: { items: [root], next_cursor: null, total: 1 } });
+        if (route.request().method() === "GET") return route.fulfill({ json: { items, next_cursor: null, total: items.length } });
         const body = route.request().postDataJSON();
         expect(body).toMatchObject({ parent_id: root.id, author_type: "guest", guest_name: "답글 작성자" });
-        return route.fulfill({ status: 201, json: comment({ id: "00000000-0000-4000-8000-000000000015", parent_id: root.id, author_name: body.guest_name, content: body.content, created_at: "2026-09-26T00:00:00Z" }) });
+        const reply = comment({ id: "00000000-0000-4000-8000-000000000015", parent_id: root.id, author_name: body.guest_name, content: body.content, created_at: "2026-09-26T00:00:00Z" });
+        items.push(reply);
+        return route.fulfill({ status: 201, json: reply });
     });
     await page.goto("/blogs/test-post-0");
     await page.locator(`#comment-${root.id}`).getByRole("button", { name: "답글", exact: true }).click();
@@ -132,6 +135,37 @@ test("reply submissions keep their parent and offer only one reply level", async
     const reply = page.locator("#comment-00000000-0000-4000-8000-000000000015");
     await expect(reply.locator(".native-comment-body")).toHaveText("질문에 답합니다.");
     await expect(reply.getByRole("button", { name: "답글", exact: true })).toHaveCount(0);
+});
+
+test("a locally posted comment beyond the first page refreshes permissions after sign-in", async ({ page }) => {
+    const firstPage = Array.from({ length: 20 }, (_, index) => comment({
+        id: `00000000-0000-4000-8000-${String(100 + index).padStart(12, "0")}`, content: `기존 의견 ${index}`,
+    }));
+    let pinned: ApiComment | null = null;
+    await page.route("**/blog/posts/test-post-0/comments**", (route) => {
+        const request = route.request();
+        if (request.method() === "POST") {
+            const body = request.postDataJSON();
+            pinned = comment({ id: "00000000-0000-4000-8000-000000000020", author_name: body.guest_name, content: body.content, created_at: "2026-09-26T00:00:00Z" });
+            return route.fulfill({ status: 201, json: pinned });
+        }
+        if (pinned && new URL(request.url()).pathname.endsWith(pinned.id)) {
+            return route.fulfill({ json: { ...pinned, can_delete: !!request.headers().authorization } });
+        }
+        return route.fulfill({ json: { items: firstPage, next_cursor: pinned ? "last-page" : null, total: pinned ? 21 : 20 } });
+    });
+    await page.goto("/blogs/test-post-0");
+    const form = page.getByRole("form", { name: "댓글 작성", exact: true });
+    await form.getByLabel("닉네임", { exact: true }).fill("방문자");
+    await form.getByLabel("비밀번호", { exact: true }).fill("comment-secret");
+    await form.getByLabel("댓글 내용", { exact: true }).fill("목록 뒤에 등록한 댓글");
+    await form.getByRole("button", { name: "댓글 등록", exact: true }).click();
+    const article = page.locator("#comment-00000000-0000-4000-8000-000000000020");
+    await expect(article.locator(".native-comment-body")).toHaveText("목록 뒤에 등록한 댓글");
+    await switchCommentTestUser(page, "comment-admin");
+    await expect(page.getByRole("button", { name: "로그아웃", exact: true })).toBeVisible();
+    await article.getByRole("button", { name: "삭제", exact: true }).click();
+    await expect(article.getByRole("form", { name: "댓글 삭제", exact: true }).getByLabel("비밀번호", { exact: true })).toHaveCount(0);
 });
 
 test("failed submissions retain the draft and suppress duplicate in-flight writes", async ({ page }) => {
@@ -205,4 +239,56 @@ test("posting while the initial list is slow does not hide the existing conversa
         releaseInitial();
         await expect(page.getByText("기존 댓글입니다.", { exact: true })).toBeVisible();
     } finally { releaseInitial(); }
+});
+
+test("Google sign-in preserves an in-progress reply and its parent", async ({ page }) => {
+    const root = comment();
+    await page.route("**/blog/posts/test-post-0/comments**", (route) => route.fulfill({ json: { items: [root], next_cursor: null, total: 1 } }));
+    await page.goto("/blogs/test-post-0");
+    await page.locator(`#comment-${root.id}`).getByRole("button", { name: "답글", exact: true }).click();
+    const form = page.getByRole("form", { name: "답글 작성", exact: true });
+    await form.getByRole("button", { name: "Google 계정", exact: true }).click();
+    await form.getByLabel("댓글 내용", { exact: true }).fill("로그인해도 남아야 할 답글");
+    await switchCommentTestUser(page, "reply-reader");
+    await expect(page.getByRole("button", { name: "로그아웃", exact: true })).toBeVisible();
+    await expect(form).toBeVisible();
+    await expect(form.getByLabel("댓글 내용", { exact: true })).toHaveValue("로그인해도 남아야 할 답글");
+    await expect(page.locator(`#comment-${root.id}`).getByRole("form", { name: "답글 작성", exact: true })).toBeVisible();
+});
+
+test("a delayed previous-account mutation cannot grant the next viewer edit permissions", async ({ page }) => {
+    const tokenA = await signInCommentTestUser(page, "viewer-a");
+    const added = comment({ id: "00000000-0000-4000-8000-000000000016", author_type: "google", author_name: "이전 계정", content: "늦게 도착한 댓글" });
+    let committed = false;
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    let tokenB = "";
+    let readsByB = 0;
+    await page.route("**/blog/posts/test-post-0/comments**", async (route) => {
+        const request = route.request();
+        if (request.method() === "GET") {
+            if (request.headers().authorization === `Bearer ${tokenB}`) readsByB++;
+            return route.fulfill({ json: { items: committed ? [added] : [], next_cursor: null, total: committed ? 1 : 0 } });
+        }
+        expect(request.headers().authorization).toBe(`Bearer ${tokenA}`);
+        committed = true;
+        await pending;
+        return route.fulfill({ status: 201, json: { ...added, can_edit: true, can_delete: true } });
+    });
+    try {
+        await page.goto("/blogs/test-post-0");
+        await expect(page.getByRole("button", { name: "로그아웃", exact: true })).toBeVisible();
+        const form = page.getByRole("form", { name: "댓글 작성", exact: true });
+        await form.getByLabel("댓글 내용", { exact: true }).fill(added.content);
+        await form.getByRole("button", { name: "댓글 등록", exact: true }).click();
+        await expect.poll(() => committed).toBe(true);
+        tokenB = await switchCommentTestUser(page, "viewer-b");
+        await expect.poll(() => readsByB).toBeGreaterThan(0);
+        const article = page.locator(`#comment-${added.id}`);
+        await expect(article.locator(".native-comment-body")).toHaveText(added.content);
+        release();
+        await expect(form.getByLabel("댓글 내용", { exact: true })).toHaveValue("");
+        await expect(article.getByRole("button", { name: "수정", exact: true })).toHaveCount(0);
+        await expect(article.getByRole("button", { name: "삭제", exact: true })).toHaveCount(0);
+    } finally { release(); }
 });

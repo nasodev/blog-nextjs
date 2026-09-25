@@ -32,7 +32,7 @@ const AuthGate = ({ children }: { children: React.ReactNode }) => {
     }
 
     return (
-        <div>
+        <div key={user.uid}>
             <div className="flex justify-end px-5 py-2 text-sm gap-4">
                     <span>{user.email}</span>
                     <button onClick={() => signOutUser()} className="underline">로그아웃</button>
