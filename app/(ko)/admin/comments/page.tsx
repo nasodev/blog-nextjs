@@ -61,7 +61,7 @@ export default function AdminCommentsPage() {
             <h1 className="text-2xl font-bold">댓글 관리</h1>
             <Link href="/admin" className="text-sm underline underline-offset-4">글 관리</Link>
         </div>
-        <p className="mb-5 text-sm opacity-60">공개 댓글 {data.total.toLocaleString()}개 · 한글·영문 통합</p>
+        <p className="mb-5 text-sm opacity-60">댓글 {data.total.toLocaleString()}개 · 한글·영문 통합</p>
         {error && <div className="mb-5 rounded-lg border border-red-500/30 p-4">
             <p role="alert">{error}</p>
             <button type="button" className="mt-2 text-sm underline" onClick={() => { setLoading(true); setRevision((value) => value + 1); }}>다시 시도</button>
