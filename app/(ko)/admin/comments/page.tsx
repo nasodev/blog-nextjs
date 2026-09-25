@@ -73,9 +73,11 @@ export default function AdminCommentsPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                     <span className="min-w-0 break-all opacity-60">{item.thread_slug}</span>
                     {item.post_slug && <Link href={`${postPath(item.post_slug)}#comments`} target="_blank" className="shrink-0 underline underline-offset-4">글 보기</Link>}
+                    {!item.post_slug && <span className="shrink-0 text-xs opacity-60">공개된 글 없음</span>}
                 </div>
                 {item.is_deleted ? <p className="mt-3 text-sm italic opacity-60">삭제된 댓글입니다.</p> : <>
-                    <p className="mt-3 font-semibold">{item.author_name}<span className="ml-2 text-xs font-normal opacity-60">{item.author_type === "guest" ? "비회원" : item.author_type === "github" ? "GitHub에서 옮김" : "Google"}{item.parent_id ? " · 답글" : ""}</span></p>
+                    <p className="mt-3 break-words font-semibold">{item.author_name}<span className="ml-2 text-xs font-normal opacity-60">{item.author_type === "guest" ? "비회원" : item.author_type === "github" ? "GitHub에서 옮김" : "Google"}{item.parent_id ? " · 답글" : ""}</span></p>
+                    {item.source_url && <a href={item.source_url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs underline underline-offset-4">원본 댓글</a>}
                     <p className="my-3 whitespace-pre-wrap break-words text-sm leading-relaxed">{item.content}</p>
                 </>}
                 <div className="mt-3 flex items-center justify-between gap-4 text-sm">

@@ -30,12 +30,14 @@ test("changing admin accounts clears the previous account's moderation data", as
         if (route.request().headers().authorization !== `Bearer ${adminToken}`) return route.fulfill({ status: 403, json: { detail: "Admin required" } });
         return route.fulfill({ json: { items: [{
             id: "00000000-0000-4000-8000-000000000017", thread_slug: "private-post", post_slug: null, parent_id: null,
-            author_type: "guest", author_name: "방문자", content: "비공개 글의 관리 댓글", created_at: "2026-09-26T00:00:00Z", updated_at: "2026-09-26T00:00:00Z",
-            is_deleted: false, can_edit: false, can_delete: true, source_url: null,
+            author_type: "github", author_name: "방문자", content: "비공개 글의 관리 댓글", created_at: "2026-09-26T00:00:00Z", updated_at: "2026-09-26T00:00:00Z",
+            is_deleted: false, can_edit: false, can_delete: true, source_url: "https://github.com/nasodev/blog-nextjs-comments/discussions/2#discussioncomment-14979852",
         }], next_cursor: null, total: 1 } });
     });
     await page.goto("/admin/comments");
     await expect(page.getByText("비공개 글의 관리 댓글", { exact: true })).toBeVisible();
+    await expect(page.getByText("공개된 글 없음", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "원본 댓글", exact: true })).toHaveAttribute("href", "https://github.com/nasodev/blog-nextjs-comments/discussions/2#discussioncomment-14979852");
     await switchCommentTestUser(page, "not-an-admin");
     await expect(page.getByRole("alert")).toBeVisible();
     await expect(page.getByText("비공개 글의 관리 댓글", { exact: true })).toHaveCount(0);
