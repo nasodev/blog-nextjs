@@ -33,6 +33,7 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
     const [notice, setNotice] = useState("");
     const generation = useRef(0);
     const pageInFlight = useRef(false);
+    const snapshotInFlight = useRef(true);
     const viewerUid = useRef<string | null>(null);
     const visibleIds = useRef<string[]>([]);
     const loadedPages = useRef(1);
@@ -45,9 +46,11 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
         if (viewerUid.current !== nextUid) {
             viewerUid.current = nextUid;
             generation.current++;
+            snapshotInFlight.current = true;
             // Keep the active form mounted while its viewer permissions refresh.
             setPage((current) => ({ ...current, items: current.items.map((item) => ({ ...item, can_edit: false, can_delete: false })) }));
             setLoading(true);
+            setRevision((value) => value + 1);
         }
         setUser(nextUser);
         setAuthError(false);
@@ -55,6 +58,7 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
 
     useEffect(() => {
         const requestGeneration = ++generation.current;
+        snapshotInFlight.current = true;
         let active = true;
         async function loadSnapshot() {
             // An expired/offline identity must not prevent reading public comments.
@@ -83,12 +87,14 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
                 loadedPages.current = pagesRead;
                 setPage({ ...result, items: mergeComments(items, pinned.filter((item): item is ApiComment => item !== null)) });
                 setError(null);
+                snapshotInFlight.current = false;
                 setLoading(false);
             }
         }
         loadSnapshot().catch((error) => {
             if (active && generation.current === requestGeneration) {
                 setError(commentError(error, locale));
+                snapshotInFlight.current = false;
                 setLoading(false);
             }
         });
@@ -97,7 +103,9 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
 
     function finishMutation(requestUid: string | null) {
         const sameViewer = viewerUid.current === requestUid;
-        if (sameViewer) generation.current++;
+        generation.current++;
+        snapshotInFlight.current = true;
+        setLoading(true);
         // Always reconcile the authoritative count, including writes that finish
         // after an identity change. Never apply the previous viewer's flags.
         setRevision((value) => value + 1);
@@ -105,7 +113,7 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
     }
 
     async function loadMore() {
-        if (!page.next_cursor || pageInFlight.current) return;
+        if (!page.next_cursor || pageInFlight.current || snapshotInFlight.current) return;
         pageInFlight.current = true;
         setLoadingMore(true);
         const requestGeneration = generation.current;
@@ -197,7 +205,7 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
             {loading && <p className="py-8 text-sm opacity-60" role="status">{copy.loading}</p>}
             {error && <div className="my-5 rounded-lg border border-red-500/30 p-4">
                 <p role="alert" className="text-sm">{error}</p>
-                <button type="button" className="mt-2 text-sm underline" onClick={() => { setLoading(true); setError(null); setRevision((value) => value + 1); }}>{copy.retry}</button>
+                <button type="button" className="mt-2 text-sm underline" onClick={() => { snapshotInFlight.current = true; setLoading(true); setError(null); setRevision((value) => value + 1); }}>{copy.retry}</button>
             </div>}
             {!loading && !error && !page.items.length && <p className="py-8 text-sm opacity-60">{copy.empty}</p>}
             <div className="divide-y divide-dark/10 dark:divide-light/10">
@@ -208,7 +216,7 @@ export default function Comments({ slug, locale = "ko" }: CommentsProps) {
                     </div>}
                 </div>)}
             </div>
-            {page.next_cursor && <button type="button" disabled={loadingMore} onClick={loadMore} className="mt-5 w-full rounded-lg border border-dark/20 dark:border-light/20 px-4 py-3 text-sm font-medium disabled:opacity-50">{loadingMore ? copy.loading : copy.more}</button>}
+            {page.next_cursor && <button type="button" disabled={loadingMore || loading} onClick={loadMore} className="mt-5 w-full rounded-lg border border-dark/20 dark:border-light/20 px-4 py-3 text-sm font-medium disabled:opacity-50">{loadingMore ? copy.loading : copy.more}</button>}
         </section>
     );
 }

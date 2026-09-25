@@ -168,6 +168,50 @@ test("a locally posted comment beyond the first page refreshes permissions after
     await expect(article.getByRole("form", { name: "댓글 삭제", exact: true }).getByLabel("비밀번호", { exact: true })).toHaveCount(0);
 });
 
+test("pagination waits for the current snapshot before loading another page", async ({ page }) => {
+    const firstPage = Array.from({ length: 20 }, (_, index) => comment({ id: `00000000-0000-4000-8000-${String(200 + index).padStart(12, "0")}`, content: `첫 페이지 ${index}` }));
+    const next = comment({ id: "00000000-0000-4000-8000-000000000300", content: "다음 페이지 댓글" });
+    let pinned: ApiComment | null = null;
+    let lookupStarted = false;
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    await page.route("**/blog/posts/test-post-0/comments**", async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (request.method() === "POST") {
+            const body = request.postDataJSON();
+            pinned = comment({ id: "00000000-0000-4000-8000-000000000301", author_name: body.guest_name, content: body.content, created_at: "2026-09-26T00:00:00Z" });
+            return route.fulfill({ status: 201, json: pinned });
+        }
+        if (pinned && url.pathname.endsWith(pinned.id)) {
+            lookupStarted = true;
+            await pending;
+            return route.fulfill({ json: pinned });
+        }
+        const more = url.searchParams.has("cursor");
+        return route.fulfill({ json: { items: more ? [next, ...(pinned ? [pinned] : [])] : firstPage, next_cursor: more ? null : "page-2", total: pinned ? 22 : 21 } });
+    });
+    try {
+        await page.goto("/blogs/test-post-0");
+        await expect(page.getByText("첫 페이지 0", { exact: true })).toBeVisible();
+        const form = page.getByRole("form", { name: "댓글 작성", exact: true });
+        await form.getByLabel("닉네임", { exact: true }).fill("방문자");
+        await form.getByLabel("비밀번호", { exact: true }).fill("comment-secret");
+        await form.getByLabel("댓글 내용", { exact: true }).fill("새로운 댓글");
+        await form.getByRole("button", { name: "댓글 등록", exact: true }).click();
+        await expect.poll(() => lookupStarted).toBe(true);
+        const more = page.getByRole("button", { name: "댓글 더 보기", exact: true });
+        await expect(more).toBeDisabled();
+        release();
+        await expect(more).toBeEnabled();
+        await more.click();
+        await expect(page.getByText("다음 페이지 댓글", { exact: true })).toBeVisible();
+        await page.locator(`#comment-${next.id}`).getByRole("button", { name: "답글", exact: true }).click();
+        await page.getByRole("form", { name: "답글 작성", exact: true }).getByLabel("댓글 내용", { exact: true }).fill("유지할 답글");
+        await expect(page.getByRole("form", { name: "답글 작성", exact: true }).getByLabel("댓글 내용", { exact: true })).toHaveValue("유지할 답글");
+    } finally { release(); }
+});
+
 test("failed submissions retain the draft and suppress duplicate in-flight writes", async ({ page }) => {
     let writes = 0;
     let release!: () => void;
