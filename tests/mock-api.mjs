@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 const posts = Array.from({ length: 12 }, (_, index) => ({
     id: String(index), slug: `test-post-${index}`, title: `테스트 가이드 ${index}`,
     description: "AI와 개발을 위한 테스트 글입니다.", author: "funqdev", cover_image_url: null,
-    tags: ["AI", "Next.js"], reading_time_minutes: 2, view_count: 12,
+    tags: index === 0 ? ["AI", "Next.js", "리서치", "개발도구"] : ["AI", "Next.js"], reading_time_minutes: 2, view_count: 12,
     published_at: `2026-09-${String(index + 1).padStart(2, "0")}T09:00:00+09:00`,
     updated_at: "2026-09-15T09:00:00+09:00", is_published: true,
     content_html: '<h2 id="intro">테스트 본문</h2><p>AI와 개발에 대한 가이드입니다.</p><pre><code>' + "long-code-line-".repeat(30) + '</code></pre>',

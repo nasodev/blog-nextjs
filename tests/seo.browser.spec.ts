@@ -1,5 +1,22 @@
 import { test, expect } from "@playwright/test";
 
+for (const prefix of ["", "/en"]) {
+    test(`Korean category URLs serve published posts and canonical metadata (${prefix || "ko"})`, async ({ request }) => {
+        for (const category of ["리서치", "개발도구"]) {
+            const path = `${prefix}/categories/${category}`;
+            const response = await request.get(`${prefix}/categories/${encodeURIComponent(category)}`);
+            expect(response.status(), path).toBe(200);
+            const html = await response.text();
+            expect(html).toContain(`href="${prefix}/blogs/test-post-0"`);
+            const canonical = html.match(/<link rel="canonical" href="([^"]+)"/);
+            expect(canonical).not.toBeNull();
+            expect(decodeURI(canonical![1])).toBe(`https://blog.funq.kr${path}`);
+            expect(html).not.toMatch(/<meta name="robots" content="[^"]*noindex/);
+        }
+        expect((await request.get(`${prefix}/categories/${encodeURIComponent("없는태그")}`)).status()).toBe(404);
+    });
+}
+
 test("localized pages expose canonical, reciprocal language links and matching social cards", async ({ page }) => {
     await page.goto("/en/blogs/test-post-0");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");

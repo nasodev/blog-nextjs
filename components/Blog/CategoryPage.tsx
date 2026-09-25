@@ -8,6 +8,14 @@ import siteMetaData from "@/utils/siteMetaData";
 import { feedPath, getPostLocale, Locale, localePath } from "@/lib/i18n";
 import { notFound } from "next/navigation";
 
+function decodeCategorySlug(categorySlug: string): string {
+    try {
+        return decodeURIComponent(categorySlug);
+    } catch {
+        notFound();
+    }
+}
+
 export async function categoryStaticParams(locale: Locale) {
     const posts = await getPublishedPosts(undefined, locale);
     const categories: string[] = [];
@@ -26,7 +34,8 @@ export async function categoryStaticParams(locale: Locale) {
     return paths;
 }
 
-export async function categoryMetadata(categorySlug: string, locale: Locale) {
+export async function categoryMetadata(rawCategorySlug: string, locale: Locale) {
+    const categorySlug = decodeCategorySlug(rawCategorySlug);
     const posts = await getAllPublishedPosts();
     const matchingPosts = posts.filter((post) => categorySlug === "all" || post.tags.some((tag) => slug(tag) === categorySlug));
     const hasPosts = matchingPosts.some((post) => getPostLocale(post.slug) === locale);
@@ -77,7 +86,8 @@ export async function categoryMetadata(categorySlug: string, locale: Locale) {
     };
 }
 
-const CategoryPage = async ({ slug: categorySlug, locale }: { slug: string; locale: Locale }) => {
+const CategoryPage = async ({ slug: rawCategorySlug, locale }: { slug: string; locale: Locale }) => {
+    const categorySlug = decodeCategorySlug(rawCategorySlug);
     const posts = await getPublishedPosts(undefined, locale);
     const allCategories = ["all"];
 
