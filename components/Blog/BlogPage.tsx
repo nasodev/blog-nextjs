@@ -229,7 +229,7 @@ export default async function BlogPage({ slug, locale }: { slug: string; locale:
                     </section>
                 )}
                 <div className="px-5 md:px-10">
-                    <Comments locale={locale} />
+                    <Comments key={post.slug} slug={post.slug} locale={locale} />
                 </div>
             </article>
         </section>

@@ -4,7 +4,7 @@ test("article links can be copied with a usable fallback when clipboard access f
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.goto("/blogs/test-post-0");
     await page.getByRole("button", { name: "글 링크 복사" }).click();
-    await expect(page.getByRole("status")).toContainText("링크를 복사했습니다");
+    await expect(page.getByRole("status").filter({ hasText: "링크를 복사했습니다" })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("https://blog.funq.kr/blogs/test-post-0");
     await page.evaluate(() => { navigator.clipboard.writeText = async () => { throw new Error("denied"); }; });
     await page.getByRole("button", { name: "글 링크 복사" }).click();

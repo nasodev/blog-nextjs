@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@codemirror/lang-html": "^6.4.11",
-    "@giscus/react": "^3.1.0",
     "@lottiefiles/dotlottie-react": "^0.19.12",
     "@tailwindcss/forms": "^0.5.7",
     "@tailwindcss/typography": "^0.5.15",

@@ -100,7 +100,7 @@ npm run test      # unit + e2e
 ### Key Integration Points
 
 - **조회수**: `lib/api/views.ts` - `ViewCounter.tsx`가 마운트 시 읽은 언어의 `POST /blog/posts/{slug}/view`를 1회 호출하고 응답의 `total_view_count`(발행된 한글·영문 합계)를 표시. 초기 표시도 `toBlogSummary`에서 같은 필드를 사용하며, 구버전 응답은 `view_count`로 대체. 추가 합산 요청은 없고 DB·관리자 목록은 언어별 `view_count`를 유지
-- **댓글**: `components/Comments/index.tsx` - Giscus (GitHub Discussions)
+- **댓글**: `components/Comments/` + `lib/api/comments.ts` - 자체 backend 댓글 API. Google 로그인·비회원 작성, 한 단계 답글, 작성자/비밀번호 수정·삭제, 한글·영문 공용 목록. `/admin/comments`에서 관리자 삭제. 일반 텍스트 표시, 비밀번호 브라우저 저장 금지, 공개 응답에 UID·이메일·해시 없음. backend 설정/마이그레이션/가져오기 완료 후 프론트 배포
 - **SEO**: `components/Blog/BlogPage.tsx` - 언어별 metadata + JSON-LD
 - **영문**: `/en` 경로, `en-{원문 slug}` API 레코드, `/admin`의 영문 작성·수정. 언어별 루트 레이아웃은 `app/(ko)`와 `app/(en)/en`. 상세 규약은 README의 English posts 참고
 - **관리자 에디터**: `/admin` (Firebase Google 로그인 필요, `AuthGate.tsx`) - 글 목록/작성/수정/삭제, CodeMirror 편집 + 초안 로컬 백업 + sandbox iframe 실시간 프리뷰

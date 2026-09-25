@@ -26,6 +26,7 @@ const server = createServer((request, response) => {
     const send = (status, body) => { response.writeHead(status); response.end(JSON.stringify(body)); };
     if (request.method === "OPTIONS") return send(200, {});
     if (path === "/blog/posts") return send(200, posts);
+    if (path.endsWith("/comments")) return send(200, { items: [], next_cursor: null, total: 0 });
     if (path === "/blog/admin/posts") {
         return send(request.headers.authorization === "Bearer test-admin" ? 200 : 403, []);
     }

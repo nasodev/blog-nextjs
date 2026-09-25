@@ -28,8 +28,8 @@ export async function signOutUser(): Promise<void> {
     await signOut(auth);
 }
 
-export function onAuthChange(cb: (user: User | null) => void) {
-    return onAuthStateChanged(auth, cb);
+export function onAuthChange(cb: (user: User | null) => void, onError?: (error: Error) => void) {
+    return onAuthStateChanged(auth, cb, onError);
 }
 
 export async function getIdToken(): Promise<string | null> {

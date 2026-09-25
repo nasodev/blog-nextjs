@@ -40,9 +40,12 @@ export default function AdminPostsPage() {
         <main className="max-w-4xl mx-auto px-5 py-8">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold">글 관리</h1>
-                <Link href="/admin/posts/new" className="px-4 py-2 rounded-lg bg-accent text-light">
-                    새 글
-                </Link>
+                <div className="flex items-center gap-4">
+                    <Link href="/admin/comments" className="text-sm underline underline-offset-4">댓글 관리</Link>
+                    <Link href="/admin/posts/new" className="px-4 py-2 rounded-lg bg-accent text-light">
+                        새 글
+                    </Link>
+                </div>
             </div>
             {error && <p className="text-red-500 mb-4">{error}</p>}
             <ul className="divide-y divide-dark/10 dark:divide-light/10">
