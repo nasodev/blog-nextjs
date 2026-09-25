@@ -99,7 +99,7 @@ npm run test      # unit + e2e
 
 ### Key Integration Points
 
-- **조회수**: `lib/api/views.ts` - backend-api `POST /blog/posts/{slug}/view` 호출, `ViewCounter.tsx`가 마운트 시 1회 증가
+- **조회수**: `lib/api/views.ts` - `ViewCounter.tsx`가 마운트 시 읽은 언어의 `POST /blog/posts/{slug}/view`를 1회 호출하고 응답의 `total_view_count`(발행된 한글·영문 합계)를 표시. 초기 표시도 `toBlogSummary`에서 같은 필드를 사용하며, 구버전 응답은 `view_count`로 대체. 추가 합산 요청은 없고 DB·관리자 목록은 언어별 `view_count`를 유지
 - **댓글**: `components/Comments/index.tsx` - Giscus (GitHub Discussions)
 - **SEO**: `components/Blog/BlogPage.tsx` - 언어별 metadata + JSON-LD
 - **영문**: `/en` 경로, `en-{원문 slug}` API 레코드, `/admin`의 영문 작성·수정. 언어별 루트 레이아웃은 `app/(ko)`와 `app/(en)/en`. 상세 규약은 README의 English posts 참고

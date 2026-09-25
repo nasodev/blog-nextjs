@@ -29,7 +29,7 @@ export function toBlogSummary(post: ApiPostSummary): BlogSummary {
         publishedAt: post.published_at,
         updatedAt: post.updated_at,
         readingTime: `${post.reading_time_minutes} min read`,
-        viewCount: post.view_count,
+        viewCount: post.total_view_count ?? post.view_count,
         _id: post.id,
     };
 }

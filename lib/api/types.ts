@@ -9,6 +9,8 @@ export interface ApiPostSummary {
     tags: string[];
     reading_time_minutes: number;
     view_count: number;
+    // Optional during rollout and for older cached API responses.
+    total_view_count?: number;
     published_at: string;
     updated_at: string;
 }
@@ -17,6 +19,11 @@ export interface TocEntry {
     level: "two" | "three";
     text: string;
     slug: string;
+}
+
+export interface ApiViewCount {
+    view_count: number;
+    total_view_count?: number;
 }
 
 export interface ApiPostDetail extends ApiPostSummary {

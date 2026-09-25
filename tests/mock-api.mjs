@@ -9,7 +9,13 @@ const posts = Array.from({ length: 12 }, (_, index) => ({
     content_html: '<h2 id="intro">테스트 본문</h2><p>AI와 개발에 대한 가이드입니다.</p><pre><code>' + "long-code-line-".repeat(30) + '</code></pre>',
     toc: [{ level: "two", text: "테스트 본문", slug: "intro" }],
 }));
-posts.push({ ...posts[0], id: "en", slug: "en-test-post-0", title: "English test guide", description: "An English guide to AI.", content_html: '<h2 id="intro">English content</h2>', toc: [{ level: "two", text: "English content", slug: "intro" }] });
+posts.push({ ...posts[0], id: "en", slug: "en-test-post-0", title: "English test guide", description: "An English guide to AI.", view_count: 7, content_html: '<h2 id="intro">English content</h2>', toc: [{ level: "two", text: "English content", slug: "intro" }] });
+for (const post of posts) {
+    const source = post.slug.replace(/^en-/, "");
+    post.total_view_count = posts
+        .filter((item) => item.slug === source || item.slug === `en-${source}`)
+        .reduce((total, item) => total + item.view_count, 0);
+}
 
 const server = createServer((request, response) => {
     response.setHeader("Content-Type", "application/json");
@@ -25,7 +31,7 @@ const server = createServer((request, response) => {
     }
     const post = posts.find((item) => path === `/blog/posts/${item.slug}` || path === `/blog/posts/${item.slug}/view`);
     if (!post) return send(404, { detail: "Not found" });
-    if (path.endsWith("/view")) return send(200, { view_count: post.view_count + 1 });
+    if (path.endsWith("/view")) return send(200, { view_count: post.view_count + 1, total_view_count: post.total_view_count + 1 });
     return send(200, post);
 });
 server.listen(28001, "127.0.0.1");

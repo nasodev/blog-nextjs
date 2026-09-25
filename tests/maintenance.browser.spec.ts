@@ -27,13 +27,45 @@ test("theme follows the system until explicitly selected and remains usable with
     await expect(page.locator("html")).toHaveClass(/dark/);
 });
 
-test("Strict Mode increments a post view once and shows the response", async ({ page }) => {
-    let increments = 0;
-    await page.route("**/blog/posts/test-post-0/view", async (route) => {
-        increments++;
-        await route.fulfill({ json: { view_count: 42 } });
+for (const { prefix, slug, total } of [
+    { prefix: "", slug: "test-post-0", total: 49 },
+    { prefix: "/en", slug: "en-test-post-0", total: 54 },
+]) {
+    test(`Strict Mode counts one visit and displays both languages' views (${slug})`, async ({ page }) => {
+        const increments: string[] = [];
+        const extraReads: string[] = [];
+        await page.route("**/blog/posts?**", async (route) => {
+            extraReads.push(route.request().url());
+            await route.continue();
+        });
+        await page.route("**/blog/posts/*/view", async (route) => {
+            increments.push(new URL(route.request().url()).pathname);
+            await route.fulfill({ json: { view_count: 42, total_view_count: total } });
+        });
+        await page.goto(`${prefix}/blogs/test-post-0`);
+        await expect(page.getByText(`${total} views`, { exact: true })).toBeVisible();
+        expect(increments).toEqual([`/blog/posts/${slug}/view`]);
+        expect(extraReads).toEqual([]);
     });
+}
+
+test.describe("server-rendered views", () => {
+    test.use({ javaScriptEnabled: false });
+
+    test("both languages show the same total before JavaScript runs", async ({ page }) => {
+        for (const prefix of ["", "/en"]) {
+            await page.goto(`${prefix}/blogs/test-post-0`);
+            await expect(page.getByText("19 views", { exact: true })).toBeVisible();
+        }
+        await page.goto("/blogs/test-post-1");
+        await expect(page.getByText("12 views", { exact: true })).toBeVisible();
+    });
+});
+
+test("a failed view increment preserves the server-rendered combined total", async ({ page }) => {
+    await page.route("**/blog/posts/*/view", (route) => route.fulfill({ status: 503, body: "Unavailable" }));
+    const refresh = page.waitForResponse((response) => response.url().endsWith("/view") && response.status() === 503);
     await page.goto("/blogs/test-post-0");
-    await expect(page.getByText("42 views", { exact: true })).toBeVisible();
-    expect(increments).toBe(1);
+    await refresh;
+    await expect(page.getByText("19 views", { exact: true })).toBeVisible();
 });
